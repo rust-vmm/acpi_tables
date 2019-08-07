@@ -1,6 +1,11 @@
-#![deny(missing_docs)]
-//! Dummy crate needs high-level documentation.
-/// Dummy public function needs documentation.
-pub fn it_works() {
-    assert_ne!(0, 1);
+// Copyright © 2019 Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
+pub mod rsdp;
+pub mod sdt;
+
+fn generate_checksum(data: &[u8]) -> u8 {
+    (255 - data.iter().fold(0u8, |acc, x| acc.wrapping_add(*x))).wrapping_add(1)
 }

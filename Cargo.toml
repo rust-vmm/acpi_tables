@@ -1,12 +1,13 @@
 [package]
-name = "crate-template"
+name = "acpi_tables"
 version = "0.1.0"
-authors = ["TODO"]
-description = "This is a template for creating rust-vmm repositories."
-repository = "https://github.com/rust-vmm/crate-template"
+authors = ["The Cloud Hypervisor Authors"]
+description = "Infrastructure for creating dynamic (via AML) and static ACPI tables"
+repository = "https://github.com/rust-vmm/acpi_tables"
 readme = "README.md"
 keywords = ["virt"]
-license = "Apache-2.0 OR BSD-3-Clause"
+license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
+vm-memory = { git = "https://github.com/rust-vmm/vm-memory" }
