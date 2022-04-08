@@ -7,7 +7,7 @@ repository = "https://github.com/rust-vmm/acpi_tables"
 readme = "README.md"
 keywords = ["virt"]
 license = "Apache-2.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 vm-memory = "0.7.0"
