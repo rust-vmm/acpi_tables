@@ -1,42 +1,27 @@
-# Crate Name
+# acpi_tables
 
 ## Design
 
-TODO: This section should have a high-level design of the crate.
-
-Some questions that might help in writing this section:
-- What is the purpose of this crate?
-- What are the main components of the crate? How do they interact which each
-  other?
+This crate provides the ability to generate static tables (e.g. FADT/FACP,
+MCFG, etc) as well as generate AML for filling a DSDT table.
 
 ## Usage
 
-TODO: This section describes how the crate is used.
+There are three modules:
 
-Some questions that might help in writing this section:
-- What traits do users need to implement?
-- Does the crate have any default/optional features? What is each feature
-  doing?
-- Is this crate used by other rust-vmm components? If yes, how?
+* `aml` provides the ability to generate AML code, see the chapter titled "ACPI
+  Machine Language (AML) Specification" in the ACPI Specification.
+* `rsdp` contains a helper for creating a `RSDP` table
+* `sdt` provides the ability to build user defined tables including header and
+  checksum validation
 
 ## Examples
 
-TODO: Usage examples.
+The crate is currently used by the Cloud Hypervisor project so detailed
+examples of populating different ACPI table types can be found there.
 
-```rust
-use my_crate;
 
-...
-```
+## Licence
 
-## License
-
-**!!!NOTICE**: The BSD-3-Clause license included in this template contains a
-generic "The rust-vmm authors" copyright.
-For crates developed from scratch, this license file can be used as is or the
-copyright can be changed, depending on the contributors. The copyright can be
-different for different crates.
-If the crate uses codes licensed with a different BSD-3-Clause license
-copyright (e.g. CrosVM), the crate must include their license file.
-The CrosVM copyright can be found
-[here](https://chromium.googlesource.com/chromiumos/platform/crosvm/+/master/LICENSE).
+This crate is licensed under the Apache 2.0 licence. The full text can be found
+in the LICENSE-APACHE file.
