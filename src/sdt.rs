@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+extern crate alloc;
+
+use alloc::vec::Vec;
+
 #[repr(packed)]
 #[derive(Clone, Copy)]
 pub struct GenericAddress {
@@ -17,18 +21,18 @@ impl GenericAddress {
     pub fn io_port_address<T>(address: u16) -> Self {
         GenericAddress {
             address_space_id: 1,
-            register_bit_width: 8 * std::mem::size_of::<T>() as u8,
+            register_bit_width: 8 * core::mem::size_of::<T>() as u8,
             register_bit_offset: 0,
-            access_size: std::mem::size_of::<T>() as u8,
+            access_size: core::mem::size_of::<T>() as u8,
             address: u64::from(address),
         }
     }
     pub fn mmio_address<T>(address: u64) -> Self {
         GenericAddress {
             address_space_id: 0,
-            register_bit_width: 8 * std::mem::size_of::<T>() as u8,
+            register_bit_width: 8 * core::mem::size_of::<T>() as u8,
             register_bit_offset: 0,
-            access_size: std::mem::size_of::<T>() as u8,
+            access_size: core::mem::size_of::<T>() as u8,
             address,
         }
     }
@@ -80,7 +84,7 @@ impl Sdt {
 
     pub fn append<T>(&mut self, value: T) {
         let orig_length = self.data.len();
-        let new_length = orig_length + std::mem::size_of::<T>();
+        let new_length = orig_length + core::mem::size_of::<T>();
         self.data.resize(new_length, 0);
         self.write_u32(4, new_length as u32);
         self.write(orig_length, value);
@@ -96,7 +100,7 @@ impl Sdt {
 
     /// Write a value at the given offset
     pub fn write<T>(&mut self, offset: usize, value: T) {
-        assert!((offset + (std::mem::size_of::<T>() - 1)) < self.data.len());
+        assert!((offset + (core::mem::size_of::<T>() - 1)) < self.data.len());
         // SAFETY: The assertion above makes sure we don't do out of bounds write.
         unsafe {
             *(((self.data.as_mut_ptr() as usize) + offset) as *mut T) = value;

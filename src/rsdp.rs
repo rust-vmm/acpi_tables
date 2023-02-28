@@ -30,7 +30,7 @@ impl Rsdp {
             oem_id,
             revision: 2,
             _rsdt_addr: 0,
-            length: std::mem::size_of::<Rsdp>() as u32,
+            length: core::mem::size_of::<Rsdp>() as u32,
             xsdt_addr,
             extended_checksum: 0,
             _reserved: [0; 3],
@@ -42,7 +42,7 @@ impl Rsdp {
     }
 
     pub fn len() -> usize {
-        std::mem::size_of::<Rsdp>()
+        core::mem::size_of::<Rsdp>()
     }
 }
 

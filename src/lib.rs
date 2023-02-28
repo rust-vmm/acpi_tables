@@ -1,7 +1,13 @@
 // Copyright © 2019 Intel Corporation
+// Copyright 2023 Rivos, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
+
+#![crate_type = "staticlib"]
+#![cfg_attr(not(test), no_std)]
+
+extern crate alloc;
 
 pub mod aml;
 pub mod rsdp;
