@@ -11,6 +11,8 @@
 
 pub mod aml;
 pub mod facs;
+pub mod fadt;
+pub mod gas;
 pub mod rsdp;
 pub mod sdt;
 
@@ -20,6 +22,10 @@ use alloc::vec::Vec;
 use zerocopy::{byteorder, byteorder::LE, AsBytes};
 
 type U32 = byteorder::U32<LE>;
+
+// Rust-VMM ACPI Tables
+pub const CREATOR_ID: [u8; 4] = *b"RVAT";
+pub const CREATOR_REVISION: [u8; 4] = [0, 0, 0, 1];
 
 /// This trait is used by the `Aml` trait as a sink for the actual
 /// bytecode. An application using this library must provide a type
