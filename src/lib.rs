@@ -14,6 +14,7 @@ pub mod facs;
 pub mod fadt;
 pub mod gas;
 pub mod madt;
+pub mod mcfg;
 pub mod rsdp;
 pub mod sdt;
 
@@ -89,6 +90,12 @@ struct TableHeader {
     pub oem_revision: U32,
     pub creator_id: [u8; 4],
     pub creator_revision: [u8; 4],
+}
+
+impl TableHeader {
+    pub fn len() -> usize {
+        core::mem::size_of::<TableHeader>()
+    }
 }
 
 impl Aml for TableHeader {
