@@ -10,4 +10,4 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-vm-memory = "0.10.0"
+zerocopy = "0.6.1"

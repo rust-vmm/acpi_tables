@@ -1,26 +1,27 @@
 // Copyright © 2019 Intel Corporation
+// Copyright © 2023 Rivos, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use vm_memory::ByteValued;
+use zerocopy::{byteorder, byteorder::LE, AsBytes};
 
-#[repr(packed)]
-#[derive(Clone, Copy, Default)]
+type U32 = byteorder::U32<LE>;
+type U64 = byteorder::U64<LE>;
+
+#[repr(C, packed)]
+#[derive(Clone, Copy, Default, AsBytes)]
 pub struct Rsdp {
     pub signature: [u8; 8],
     pub checksum: u8,
     pub oem_id: [u8; 6],
     pub revision: u8,
-    _rsdt_addr: u32,
-    pub length: u32,
-    pub xsdt_addr: u64,
+    _rsdt_addr: U32,
+    pub length: U32,
+    pub xsdt_addr: U64,
     pub extended_checksum: u8,
     _reserved: [u8; 3],
 }
-
-// SAFETY: Rsdp only contains a series of integers
-unsafe impl ByteValued for Rsdp {}
 
 impl Rsdp {
     pub fn new(oem_id: [u8; 6], xsdt_addr: u64) -> Self {
@@ -29,15 +30,15 @@ impl Rsdp {
             checksum: 0,
             oem_id,
             revision: 2,
-            _rsdt_addr: 0,
-            length: core::mem::size_of::<Rsdp>() as u32,
-            xsdt_addr,
+            _rsdt_addr: 0.into(),
+            length: (core::mem::size_of::<Rsdp>() as u32).into(),
+            xsdt_addr: xsdt_addr.into(),
             extended_checksum: 0,
             _reserved: [0; 3],
         };
 
-        rsdp.checksum = super::generate_checksum(&rsdp.as_slice()[0..19]);
-        rsdp.extended_checksum = super::generate_checksum(rsdp.as_slice());
+        rsdp.checksum = super::generate_checksum(rsdp.as_bytes());
+        rsdp.extended_checksum = super::generate_checksum(rsdp.as_bytes());
         rsdp
     }
 
@@ -48,19 +49,18 @@ impl Rsdp {
 
 #[cfg(test)]
 mod tests {
-    use super::Rsdp;
-    use vm_memory::bytes::ByteValued;
+    use super::*;
 
     #[test]
     fn test_rsdp() {
         let rsdp = Rsdp::new(*b"CHYPER", 0xdead_beef);
         let sum = rsdp
-            .as_slice()
+            .as_bytes()
             .iter()
             .fold(0u8, |acc, x| acc.wrapping_add(*x));
         assert_eq!(sum, 0);
         let sum: u8 = rsdp
-            .as_slice()
+            .as_bytes()
             .iter()
             .fold(0u8, |acc, x| acc.wrapping_add(*x));
         assert_eq!(sum, 0);
