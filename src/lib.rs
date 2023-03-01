@@ -13,6 +13,7 @@ pub mod aml;
 pub mod facs;
 pub mod fadt;
 pub mod gas;
+pub mod madt;
 pub mod rsdp;
 pub mod sdt;
 
