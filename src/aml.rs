@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use core::marker::PhantomData;
-
 extern crate alloc;
 use alloc::string::String;
 use alloc::{vec, vec::Vec};
@@ -657,6 +655,7 @@ impl<'a> Aml for Return<'a> {
     }
 }
 
+#[repr(u8)]
 #[derive(Clone, Copy)]
 pub enum FieldAccessType {
     Any,
@@ -667,6 +666,7 @@ pub enum FieldAccessType {
     Buffer,
 }
 
+#[repr(u8)]
 #[derive(Clone, Copy)]
 pub enum FieldUpdateRule {
     Preserve = 0,
@@ -674,16 +674,24 @@ pub enum FieldUpdateRule {
     WriteAsZeroes = 2,
 }
 
+#[repr(u8)]
 pub enum FieldEntry {
     Named([u8; 4], usize),
     Reserved(usize),
 }
 
+#[repr(u8)]
+#[derive(Clone, Copy)]
+pub enum FieldLockRule {
+    NoLock = 0,
+    Lock = 1,
+}
+
 pub struct Field {
     path: Path,
-
     fields: Vec<FieldEntry>,
     access_type: FieldAccessType,
+    lock_rule: FieldLockRule,
     update_rule: FieldUpdateRule,
 }
 
@@ -692,12 +700,14 @@ impl Field {
         path: Path,
         access_type: FieldAccessType,
         update_rule: FieldUpdateRule,
+        lock_rule: FieldLockRule,
         fields: Vec<FieldEntry>,
     ) -> Self {
         Field {
             path,
             fields,
             access_type,
+            lock_rule,
             update_rule,
         }
     }
@@ -708,7 +718,8 @@ impl Aml for Field {
         let mut tmp = Vec::new();
         self.path.append_aml_bytes(&mut tmp);
 
-        let flags: u8 = self.access_type as u8 | (self.update_rule as u8) << 5;
+        let flags: u8 =
+            self.access_type as u8 | (self.lock_rule as u8) << 4 | (self.update_rule as u8) << 5;
         tmp.push(flags);
 
         for field in self.fields.iter() {
@@ -806,43 +817,70 @@ impl<'a> Aml for If<'a> {
     }
 }
 
-pub struct Equal<'a> {
-    left: &'a dyn Aml,
-    right: &'a dyn Aml,
+/// Else object
+pub struct Else<'a> {
+    body: Vec<&'a dyn Aml>,
 }
 
-impl<'a> Equal<'a> {
-    pub fn new(left: &'a dyn Aml, right: &'a dyn Aml) -> Self {
-        Equal { left, right }
+impl<'a> Else<'a> {
+    /// Create Else object.
+    pub fn new(body: Vec<&'a dyn Aml>) -> Self {
+        Else { body }
     }
 }
 
-impl<'a> Aml for Equal<'a> {
-    fn append_aml_bytes(&self, bytes: &mut Vec<u8>) {
-        bytes.push(0x93); /* LEqualOp */
-        self.left.append_aml_bytes(bytes);
-        self.right.append_aml_bytes(bytes);
+impl<'a> Aml for Else<'a> {
+    fn append_aml_bytes(&self, out: &mut Vec<u8>) {
+        let mut bytes = Vec::new();
+        for child in self.body.iter() {
+            child.append_aml_bytes(&mut bytes);
+        }
+
+        let mut pkg_length = create_pkg_length(&bytes, true);
+        pkg_length.reverse();
+        for byte in pkg_length {
+            bytes.insert(0, byte);
+        }
+
+        out.push(0xa1); /* ElseOp */
+        out.extend_from_slice(&bytes);
     }
 }
 
-pub struct LessThan<'a> {
-    left: &'a dyn Aml,
-    right: &'a dyn Aml,
+macro_rules! compare_op {
+    ($name:ident, $opcode:expr, $invert:expr) => {
+        /// Compare object with its right part and left part, which are both ACPI Object.
+        pub struct $name<'a> {
+            right: &'a dyn Aml,
+            left: &'a dyn Aml,
+        }
+
+        impl<'a> $name<'a> {
+            /// Create the compare object method.
+            pub fn new(left: &'a dyn Aml, right: &'a dyn Aml) -> Self {
+                $name { left, right }
+            }
+        }
+
+        impl<'a> Aml for $name<'a> {
+            fn append_aml_bytes(&self, bytes: &mut Vec<u8>) {
+                if $invert {
+                    bytes.push(0x92); /* NotOp */
+                }
+                bytes.push($opcode);
+                self.left.append_aml_bytes(bytes);
+                self.right.append_aml_bytes(bytes);
+            }
+        }
+    };
 }
 
-impl<'a> LessThan<'a> {
-    pub fn new(left: &'a dyn Aml, right: &'a dyn Aml) -> Self {
-        LessThan { left, right }
-    }
-}
-
-impl<'a> Aml for LessThan<'a> {
-    fn append_aml_bytes(&self, bytes: &mut Vec<u8>) {
-        bytes.push(0x95); /* LLessOp */
-        self.left.append_aml_bytes(bytes);
-        self.right.append_aml_bytes(bytes);
-    }
-}
+compare_op!(Equal, 0x93, false);
+compare_op!(LessThan, 0x95, false);
+compare_op!(GreaterThan, 0x94, false);
+compare_op!(NotEqual, 0x93, true);
+compare_op!(GreaterEqual, 0x95, true);
+compare_op!(LessEqual, 0x94, true);
 
 pub struct Arg(pub u8);
 
@@ -988,6 +1026,33 @@ impl<'a> Aml for While<'a> {
     }
 }
 
+macro_rules! object_op {
+    ($name:ident, $opcode:expr) => {
+        /// General operation on a object.
+        pub struct $name<'a> {
+            a: &'a dyn Aml,
+        }
+
+        impl<'a> $name<'a> {
+            /// Create the object method.
+            pub fn new(a: &'a dyn Aml) -> Self {
+                $name { a }
+            }
+        }
+
+        impl<'a> Aml for $name<'a> {
+            fn append_aml_bytes(&self, bytes: &mut Vec<u8>) {
+                bytes.push($opcode);
+                self.a.append_aml_bytes(bytes);
+            }
+        }
+    };
+}
+
+object_op!(ObjectType, 0x8e);
+object_op!(SizeOf, 0x87);
+object_op!(DeRefOf, 0x83);
+
 macro_rules! binary_op {
     ($name:ident, $opcode:expr) => {
         pub struct $name<'a> {
@@ -1029,6 +1094,34 @@ binary_op!(ConateRes, 0x84);
 binary_op!(Mod, 0x85);
 binary_op!(Index, 0x88);
 binary_op!(ToString, 0x9C);
+
+macro_rules! convert_op {
+    ($name:ident, $opcode:expr) => {
+        /// General operation object with the operator a/b and a target.
+        pub struct $name<'a> {
+            a: &'a dyn Aml,
+            target: &'a dyn Aml,
+        }
+
+        impl<'a> $name<'a> {
+            /// Create the object.
+            pub fn new(target: &'a dyn Aml, a: &'a dyn Aml) -> Self {
+                $name { target, a }
+            }
+        }
+
+        impl<'a> Aml for $name<'a> {
+            fn append_aml_bytes(&self, bytes: &mut Vec<u8>) {
+                bytes.push($opcode); /* Op for the binary operator */
+                self.a.append_aml_bytes(bytes);
+                self.target.append_aml_bytes(bytes);
+            }
+        }
+    };
+}
+
+convert_op!(ToBuffer, 0x96);
+convert_op!(ToInteger, 0x99);
 
 pub struct MethodCall<'a> {
     name: Path,
@@ -1074,39 +1167,220 @@ impl Aml for Buffer {
     }
 }
 
-pub struct CreateField<'a, T> {
-    buffer: &'a dyn Aml,
-    offset: &'a dyn Aml,
-    field: Path,
-    phantom: PhantomData<&'a T>,
+/// Buffer object with the TermArg in it.
+pub struct BufferTerm<'a> {
+    data: &'a dyn Aml,
 }
 
-impl<'a, T> CreateField<'a, T> {
-    pub fn new(buffer: &'a dyn Aml, offset: &'a dyn Aml, field: Path) -> Self {
-        CreateField::<T> {
-            buffer,
-            offset,
-            field,
-            phantom: PhantomData::default(),
+impl<'a> BufferTerm<'a> {
+    /// Create BufferTerm object.
+    pub fn new(data: &'a dyn Aml) -> Self {
+        BufferTerm { data }
+    }
+}
+
+impl<'a> Aml for BufferTerm<'a> {
+    fn append_aml_bytes(&self, bytes: &mut Vec<u8>) {
+        let mut out = Vec::new();
+        self.data.append_aml_bytes(&mut out);
+
+        let mut pkg_length = create_pkg_length(&out, true);
+        pkg_length.reverse();
+        for byte in pkg_length {
+            out.insert(0, byte);
+        }
+
+        out.push(0x11); /* BufferOp */
+        out.extend_from_slice(bytes);
+    }
+}
+
+/// Buffer object with the data in it.
+pub struct BufferData {
+    data: Vec<u8>,
+}
+
+impl BufferData {
+    /// Create BufferData object.
+    pub fn new(data: Vec<u8>) -> Self {
+        BufferData { data }
+    }
+}
+
+impl Aml for BufferData {
+    fn append_aml_bytes(&self, out: &mut Vec<u8>) {
+        let mut bytes = Vec::new();
+        self.data.len().append_aml_bytes(&mut bytes);
+        bytes.extend_from_slice(&self.data);
+
+        let mut pkg_length = create_pkg_length(&bytes, true);
+        pkg_length.reverse();
+        for byte in pkg_length {
+            bytes.insert(0, byte);
+        }
+
+        out.push(0x11); /* BufferOp */
+        out.extend_from_slice(&bytes);
+    }
+}
+
+pub struct Uuid {
+    name: BufferData,
+}
+
+fn hex2byte(v1: char, v2: char) -> u8 {
+    let hi = v1.to_digit(16).unwrap() as u8;
+    assert!(hi <= 15);
+    let lo = v2.to_digit(16).unwrap() as u8;
+    assert!(lo <= 15);
+
+    (hi << 4) | lo
+}
+
+impl Uuid {
+    // Create Uuid object
+    // eg. UUID: aabbccdd-eeff-gghh-iijj-kkllmmnnoopp
+    pub fn new(name: &str) -> Self {
+        let name_vec: Vec<char> = name.chars().collect();
+        let mut data = Vec::new();
+
+        assert_eq!(name_vec.len(), 36);
+        assert_eq!(name_vec[8], '-');
+        assert_eq!(name_vec[13], '-');
+        assert_eq!(name_vec[18], '-');
+        assert_eq!(name_vec[23], '-');
+
+        // dd - at offset 00
+        data.push(hex2byte(name_vec[6], name_vec[7]));
+        // cc - at offset 01
+        data.push(hex2byte(name_vec[4], name_vec[5]));
+        // bb - at offset 02
+        data.push(hex2byte(name_vec[2], name_vec[3]));
+        // aa - at offset 03
+        data.push(hex2byte(name_vec[0], name_vec[1]));
+
+        // ff - at offset 04
+        data.push(hex2byte(name_vec[11], name_vec[12]));
+        // ee - at offset 05
+        data.push(hex2byte(name_vec[9], name_vec[10]));
+
+        // hh - at offset 06
+        data.push(hex2byte(name_vec[16], name_vec[17]));
+        // gg - at offset 07
+        data.push(hex2byte(name_vec[14], name_vec[15]));
+
+        // ii - at offset 08
+        data.push(hex2byte(name_vec[19], name_vec[20]));
+        // jj - at offset 09
+        data.push(hex2byte(name_vec[21], name_vec[22]));
+
+        // kk - at offset 10
+        data.push(hex2byte(name_vec[24], name_vec[25]));
+        // ll - at offset 11
+        data.push(hex2byte(name_vec[26], name_vec[27]));
+        // mm - at offset 12
+        data.push(hex2byte(name_vec[28], name_vec[29]));
+        // nn - at offset 13
+        data.push(hex2byte(name_vec[30], name_vec[31]));
+        // oo - at offset 14
+        data.push(hex2byte(name_vec[32], name_vec[33]));
+        // pp - at offset 15
+        data.push(hex2byte(name_vec[34], name_vec[35]));
+
+        Uuid {
+            name: BufferData::new(data),
         }
     }
 }
 
-impl<'a> Aml for CreateField<'a, u64> {
+impl Aml for Uuid {
     fn append_aml_bytes(&self, bytes: &mut Vec<u8>) {
-        bytes.push(0x8f); /* CreateQWordFieldOp */
-        self.buffer.append_aml_bytes(bytes);
-        self.offset.append_aml_bytes(bytes);
-        self.field.append_aml_bytes(bytes);
+        self.name.append_aml_bytes(bytes)
     }
 }
 
-impl<'a> Aml for CreateField<'a, u32> {
+/// Power Resource object. 'children' represents Power Resource method.
+pub struct PowerResource<'a> {
+    name: Path,
+    level: u8,
+    order: u16,
+    children: Vec<&'a dyn Aml>,
+}
+
+impl<'a> PowerResource<'a> {
+    /// Create Power Resouce object
+    pub fn new(name: Path, level: u8, order: u16, children: Vec<&'a dyn Aml>) -> Self {
+        PowerResource {
+            name,
+            level,
+            order,
+            children,
+        }
+    }
+}
+
+impl<'a> Aml for PowerResource<'a> {
+    fn append_aml_bytes(&self, out: &mut Vec<u8>) {
+        let mut bytes = Vec::new();
+
+        // Add name string
+        self.name.append_aml_bytes(&mut bytes);
+        // Add system level
+        bytes.push(self.level);
+        // Add Resource Order
+        let orders = self.order.to_le_bytes();
+        bytes.push(orders[0]);
+        bytes.push(orders[1]);
+        // Add child data
+        for child in &self.children {
+            child.append_aml_bytes(&mut bytes);
+        }
+
+        // PkgLength
+        let mut pkg_length = create_pkg_length(&bytes, true);
+        pkg_length.reverse();
+        for byte in pkg_length {
+            bytes.insert(0, byte);
+        }
+
+        out.push(0x5b); /* ExtOpPrefix */
+        out.push(0x84); /* PowerResourceOp */
+        out.extend_from_slice(&bytes);
+    }
+}
+
+/// Create Field Object.
+pub struct CreateField<'a> {
+    name_string: &'a dyn Aml,
+    source: &'a dyn Aml,
+    bit_index: &'a dyn Aml,
+    bit_num: &'a dyn Aml,
+}
+
+impl<'a> CreateField<'a> {
+    pub fn new(
+        name_string: &'a dyn Aml,
+        source: &'a dyn Aml,
+        bit_index: &'a dyn Aml,
+        bit_num: &'a dyn Aml,
+    ) -> Self {
+        CreateField {
+            name_string,
+            source,
+            bit_index,
+            bit_num,
+        }
+    }
+}
+
+impl<'a> Aml for CreateField<'a> {
     fn append_aml_bytes(&self, bytes: &mut Vec<u8>) {
-        bytes.push(0x8a); /* CreateDWordFieldOp */
-        self.buffer.append_aml_bytes(bytes);
-        self.offset.append_aml_bytes(bytes);
-        self.field.append_aml_bytes(bytes);
+        bytes.push(0x5b); /* ExtOpPrefix */
+        bytes.push(0x13); /* CreateField */
+        self.source.append_aml_bytes(bytes);
+        self.bit_index.append_aml_bytes(bytes);
+        self.bit_num.append_aml_bytes(bytes);
+        self.name_string.append_aml_bytes(bytes);
     }
 }
 
@@ -1528,6 +1802,7 @@ mod tests {
                 "PRST".into(),
                 FieldAccessType::Byte,
                 FieldUpdateRule::WriteAsZeroes,
+                FieldLockRule::NoLock,
                 vec![
                     FieldEntry::Reserved(32),
                     FieldEntry::Named(*b"CPEN", 1),
@@ -1561,6 +1836,7 @@ mod tests {
                 "PRST".into(),
                 FieldAccessType::DWord,
                 FieldUpdateRule::Preserve,
+                FieldLockRule::NoLock,
                 vec![
                     FieldEntry::Named(*b"CSEL", 32),
                     FieldEntry::Reserved(32),
@@ -1856,19 +2132,22 @@ mod tests {
                     0xFFFFFFFFFFFFFFFF, // Length
                     ,, _Y00, AddressRangeMemory, TypeStatic)
             })
-            CreateQWordField (MR64, \_SB.MHPC.MCRS._Y00._MIN, MIN)  // _MIN: Minimum Base Address
-            CreateQWordField (MR64, \_SB.MHPC.MCRS._Y00._MAX, MAX)  // _MAX: Maximum Base Address
-            CreateQWordField (MR64, \_SB.MHPC.MCRS._Y00._LEN, LEN)  // _LEN: Length
+            CreateField (MR64, 14, 64, MIN_)  // _MIN: Minimum Base Address
+            CreateField (MR64, 22, 64, MAX_)  // _MAX: Maximum Base Address
+            CreateField (MR64, 38, 64, LEN_)  // _LEN: Length
         }
-        */
+         */
         let data = [
-            0x14, 0x41, 0x06, 0x4D, 0x43, 0x52, 0x53, 0x08, 0x08, 0x4D, 0x52, 0x36, 0x34, 0x11,
-            0x33, 0x0A, 0x30, 0x8A, 0x2B, 0x00, 0x00, 0x0C, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFE, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x79, 0x00, 0x8F, 0x4D, 0x52, 0x36, 0x34,
-            0x0A, 0x0E, 0x4D, 0x49, 0x4E, 0x5F, 0x8F, 0x4D, 0x52, 0x36, 0x34, 0x0A, 0x16, 0x4D,
-            0x41, 0x58, 0x5F, 0x8F, 0x4D, 0x52, 0x36, 0x34, 0x0A, 0x26, 0x4C, 0x45, 0x4E, 0x5F,
+            0x14, 0x4f, 0x07, 0x4d, 0x43, 0x52, 0x53, 0x08, 0x08, 0x4d, 0x52, 0x36, 0x34, 0x11,
+            0x33, 0x0a, 0x30, 0x8a, 0x2b, 0x00, 0x00, 0x0c, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfe, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x79, 0x00, 0x5b, 0x13, 0x4d, 0x52, 0x36,
+            0x34, 0x0e, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x40, 0x4d, 0x49,
+            0x4e, 0x5f, 0x5b, 0x13, 0x4d, 0x52, 0x36, 0x34, 0x0e, 0x16, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x0a, 0x40, 0x4d, 0x41, 0x58, 0x5f, 0x5b, 0x13, 0x4d, 0x52, 0x36,
+            0x34, 0x0e, 0x26, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x40, 0x4c, 0x45,
+            0x4e, 0x5f,
         ];
 
         assert_eq!(
@@ -1886,9 +2165,9 @@ mod tests {
                             0xFFFF_FFFF_FFFF_FFFEu64
                         )])
                     ),
-                    &CreateField::<u64>::new(&Path::new("MR64"), &14usize, "MIN_".into()),
-                    &CreateField::<u64>::new(&Path::new("MR64"), &22usize, "MAX_".into()),
-                    &CreateField::<u64>::new(&Path::new("MR64"), &38usize, "LEN_".into()),
+                    &CreateField::new(&Path::new("MIN_"), &Path::new("MR64"), &14u64, &64usize),
+                    &CreateField::new(&Path::new("MAX_"), &Path::new("MR64"), &22u64, &64usize),
+                    &CreateField::new(&Path::new("LEN_"), &Path::new("MR64"), &38u64, &64usize),
                 ]
             )
             .to_aml_bytes(),
