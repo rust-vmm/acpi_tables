@@ -19,6 +19,7 @@ pub mod pptt;
 pub mod rhct;
 pub mod rsdp;
 pub mod sdt;
+pub mod slit;
 pub mod xsdt;
 
 extern crate alloc;
