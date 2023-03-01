@@ -10,6 +10,7 @@
 //! ACPI table generation.
 
 pub mod aml;
+pub mod facs;
 pub mod rsdp;
 pub mod sdt;
 

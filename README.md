@@ -7,10 +7,11 @@ MCFG, etc) as well as generate AML for filling a DSDT table.
 
 ## Usage
 
-There are three modules:
+There are four modules:
 
 * `aml` provides the ability to generate AML code, see the chapter titled "ACPI
   Machine Language (AML) Specification" in the ACPI Specification.
+* `facs` contains routines for creating a `FACS` table
 * `rsdp` contains a helper for creating a `RSDP` table
 * `sdt` provides the ability to build user defined tables including header and
   checksum validation
