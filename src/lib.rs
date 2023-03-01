@@ -16,6 +16,7 @@ pub mod gas;
 pub mod madt;
 pub mod mcfg;
 pub mod pptt;
+pub mod rhct;
 pub mod rsdp;
 pub mod sdt;
 
