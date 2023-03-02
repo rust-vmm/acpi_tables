@@ -98,6 +98,12 @@ pub struct Checksum {
     value: u8,
 }
 
+impl AmlSink for Checksum {
+    fn byte(&mut self, byte: u8) {
+        self.add(byte);
+    }
+}
+
 impl Checksum {
     pub fn append(&mut self, data: &[u8]) {
         let mut value: u8 = self.value;
@@ -132,6 +138,12 @@ impl Checksum {
     pub fn value(&self) -> u8 {
         (255 - self.value).wrapping_add(1)
     }
+}
+
+pub fn u8sum(aml: &dyn Aml) -> u8 {
+    let mut cksum = Checksum::default();
+    aml.to_aml_bytes(&mut cksum);
+    cksum.raw_value()
 }
 
 #[cfg(test)]
