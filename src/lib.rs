@@ -22,6 +22,7 @@ pub mod rsdp;
 pub mod sdt;
 pub mod slit;
 pub mod srat;
+pub mod tpm2;
 pub mod viot;
 pub mod xsdt;
 

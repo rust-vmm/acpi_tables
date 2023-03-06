@@ -52,6 +52,22 @@ impl GAS {
     pub fn len() -> usize {
         core::mem::size_of::<GAS>()
     }
+
+    pub fn new(
+        address_space_id: AddressSpace,
+        register_bit_width: u8,
+        register_bit_offset: u8,
+        access_size: AccessSize,
+        address: u64,
+    ) -> Self {
+        Self {
+            address_space_id,
+            register_bit_width,
+            register_bit_offset,
+            access_size,
+            address: address.into(),
+        }
+    }
 }
 
 crate::assert_same_size!(GAS, [u8; 12]);
