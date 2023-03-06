@@ -101,13 +101,7 @@ impl TableHeader {
     }
 }
 
-impl Aml for TableHeader {
-    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.as_bytes() {
-            sink.byte(*byte);
-        }
-    }
-}
+aml_as_bytes!(TableHeader);
 
 /// Object used to keep track of a rolling u8 sum, for which
 /// the checksum can be derived via value().
@@ -200,4 +194,17 @@ macro_rules! assert_same_size {
             let _ = core::mem::transmute::<$x, $y>;
         };
     };
+}
+
+#[macro_export]
+macro_rules! aml_as_bytes {
+    ($x:ty) => {
+        impl Aml for $x {
+            fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
+                for byte in self.as_bytes() {
+                    sink.byte(*byte);
+                }
+            }
+        }
+    }
 }

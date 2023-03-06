@@ -47,10 +47,4 @@ impl FACS {
     }
 }
 
-impl Aml for FACS {
-    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.as_bytes() {
-            sink.byte(*byte);
-        }
-    }
-}
+crate::aml_as_bytes!(FACS);
