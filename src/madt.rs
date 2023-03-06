@@ -14,17 +14,27 @@ type U16 = byteorder::U16<LE>;
 type U32 = byteorder::U32<LE>;
 type U64 = byteorder::U64<LE>;
 
-const RISCV_INTC_STRUCTURE: u8 = 0x18;
-const RISCV_IMSIC_STRUCTURE: u8 = 0x19;
-const RISCV_APLIC_STRUCTURE: u8 = 0x1a;
+#[repr(u8)]
+enum MadtStructureType {
+    ProcessorLocalApic = 0x0,
+    IoApic = 0x1,
+    GicCpuInterface = 0xb,
+    GicDistributor = 0xc,
+    GicMsiFrame = 0xd,
+    GicRedistributor = 0xe,
+    GicTranslationService = 0xf,
+    RiscvIntc = 0x18,
+    RiscvImsic = 0x19,
+    RiscvAplic = 0x1a,
+}
 
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, Default, AsBytes)]
 struct Header {
-    pub table_header: TableHeader,
+    table_header: TableHeader,
     /// Must be ignored by OSPM for RISC-V
-    pub local_interrupt_controller_address: U32,
-    pub flags: U32,
+    local_interrupt_controller_address: U32,
+    flags: U32,
 }
 
 impl Header {
@@ -98,21 +108,18 @@ impl MADT {
         self.header.table_header.checksum = self.checksum.value();
     }
 
-    pub fn add_rintc(&mut self, rintc: RINTC) {
-        self.update_header(rintc.as_bytes());
-        self.structures.push(Box::new(rintc));
+    pub fn add_structure<T>(&mut self, t: T)
+    where
+        T: Aml + AsBytes + Clone + 'static,
+    {
+        self.update_header(t.as_bytes());
+        self.structures.push(Box::new(t));
     }
 
     pub fn add_imsic(&mut self, imsic: IMSIC) {
         assert!(!self.has_imsic);
-        self.update_header(imsic.as_bytes());
-        self.structures.push(Box::new(imsic));
+        self.add_structure(imsic);
         self.has_imsic = true;
-    }
-
-    pub fn add_aplic(&mut self, aplic: APLIC) {
-        self.update_header(aplic.as_bytes());
-        self.structures.push(Box::new(aplic));
     }
 }
 
@@ -128,19 +135,364 @@ impl Aml for MADT {
     }
 }
 
+/// Processor-Local APIC
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default, AsBytes)]
+pub struct ProcessorLocalApic {
+    r#type: u8,
+    length: u8,
+    processor_uid: u8,
+    apic_id: u8,
+    flags: U32,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[repr(u32)]
+pub enum EnabledStatus {
+    Disabled = 0,
+    Enabled = 1,
+    DisabledOnlineCapable = 2,
+}
+
+impl ProcessorLocalApic {
+    pub fn new(uid: u8, apic_id: u8, enabled: EnabledStatus) -> Self {
+        Self {
+            r#type: MadtStructureType::ProcessorLocalApic as u8,
+            length: 8,
+            processor_uid: uid,
+            apic_id,
+            flags: (enabled as u32).into(),
+        }
+    }
+}
+
+aml_as_bytes!(ProcessorLocalApic);
+
+/// I/O APIC
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default, AsBytes)]
+pub struct IoApic {
+    r#type: u8,
+    length: u8,
+    io_apic_id: u8,
+    _reserved: u8,
+    io_apic_addr: U32,
+    gsi_base: U32,
+}
+
+impl IoApic {
+    pub fn new(io_apic_id: u8, io_apic_addr: u32, gsi_base: u32) -> Self {
+        Self {
+            r#type: MadtStructureType::IoApic as u8,
+            length: 12,
+            io_apic_id,
+            _reserved: 0,
+            io_apic_addr: io_apic_addr.into(),
+            gsi_base: gsi_base.into(),
+        }
+    }
+}
+
+aml_as_bytes!(IoApic);
+
+/// GIC CPU Interface (GICC)
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default, AsBytes)]
+pub struct Gicc {
+    r#type: u8,
+    length: u8,
+    _reserved0: U16,
+    cpu_interface_number: U32,
+    acpi_processor_uid: U32,
+    flags: U32,
+    parking_protocol_ver: U32,
+    performance_interrupt: U32,
+    parked_address: U64,
+    base_address: U64,
+    virtual_registers: U64,
+    control_block_registers: U64,
+    maintenance_interrupt: U32,
+    redistributor_base: U64,
+    mpidr: U64,
+    power_efficiency_class: u8,
+    _reserved1: u8,
+    overflow_interrupt: U16,
+    trbe_interrupt: U16,
+}
+
+#[repr(u32)]
+enum GiccFlags {
+    Enabled = 1 << 0,
+    PerformanceInterruptEdgeTriggered = 1 << 1,
+    MaintenanceInterruptEdgeTriggered = 1 << 2,
+    OnlineCapable = 1 << 3,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Trigger {
+    Edge,
+    Level,
+}
+
+impl Gicc {
+    fn len() -> usize {
+        core::mem::size_of::<Self>()
+    }
+
+    pub fn new(status: EnabledStatus) -> Self {
+        let flags = match status {
+            EnabledStatus::Enabled => GiccFlags::Enabled as u32,
+            EnabledStatus::Disabled => 0,
+            EnabledStatus::DisabledOnlineCapable => GiccFlags::OnlineCapable as u32,
+        };
+
+        Self {
+            r#type: MadtStructureType::GicCpuInterface as u8,
+            length: Self::len() as u8,
+            flags: flags.into(),
+            ..Default::default()
+        }
+    }
+
+    pub fn cpu_interface_number(mut self, number: u32) -> Self {
+        self.cpu_interface_number = number.into();
+        self
+    }
+
+    pub fn acpi_processor_uid(mut self, uid: u32) -> Self {
+        self.acpi_processor_uid = uid.into();
+        self
+    }
+
+    pub fn parking_protocol_version(mut self, version: u32) -> Self {
+        self.parking_protocol_ver = version.into();
+        self
+    }
+
+    pub fn performance_interrupt(mut self, gsi: u32, trigger: Trigger) -> Self {
+        if trigger == Trigger::Edge {
+            let flags = self.flags.get();
+            self.flags
+                .set(flags | GiccFlags::PerformanceInterruptEdgeTriggered as u32);
+        }
+        self.performance_interrupt = gsi.into();
+        self
+    }
+
+    pub fn parked_address(mut self, address: u64) -> Self {
+        self.parked_address = address.into();
+        self
+    }
+
+    pub fn base_address(mut self, address: u64) -> Self {
+        self.base_address = address.into();
+        self
+    }
+
+    pub fn virtual_registers(mut self, address: u64) -> Self {
+        self.virtual_registers = address.into();
+        self
+    }
+
+    pub fn control_block(mut self, address: u64) -> Self {
+        self.control_block_registers = address.into();
+        self
+    }
+
+    pub fn maintenance_interrupt(mut self, gsi: u32, trigger: Trigger) -> Self {
+        if trigger == Trigger::Edge {
+            let flags = self.flags.get();
+            self.flags
+                .set(flags | GiccFlags::MaintenanceInterruptEdgeTriggered as u32);
+        }
+        self.maintenance_interrupt = gsi.into();
+        self
+    }
+
+    pub fn redistributor_base(mut self, address: u64) -> Self {
+        self.redistributor_base = address.into();
+        self
+    }
+
+    pub fn mpidr(mut self, mpidr: u64) -> Self {
+        self.mpidr = mpidr.into();
+        self
+    }
+
+    pub fn power_efficiency_class(mut self, class: u8) -> Self {
+        self.power_efficiency_class = class;
+        self
+    }
+
+    pub fn overflow_interrupt(mut self, gsi: u16) -> Self {
+        self.overflow_interrupt = gsi.into();
+        self
+    }
+
+    pub fn trbe_interrupt(mut self, gsi: u16) -> Self {
+        self.trbe_interrupt = gsi.into();
+        self
+    }
+}
+
+assert_same_size!(Gicc, [u8; 82]);
+aml_as_bytes!(Gicc);
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[repr(u8)]
+pub enum GicVersion {
+    Unspecified = 0,
+    GICv1 = 1,
+    GICv2 = 2,
+    GICv3 = 3,
+    GICv4 = 4,
+}
+
+/// GIC Distributor (GICD) Structure
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default, AsBytes)]
+pub struct Gicd {
+    r#type: u8,
+    length: u8,
+    _reserved0: U16,
+    gic_id: U32,
+    base_addr: U64,
+    vector_base: U32,
+    gic_version: u8,
+    _reserved1: [u8; 3],
+}
+
+impl Gicd {
+    pub fn new(gic_id: u32, base_addr: u64, version: GicVersion) -> Self {
+        Self {
+            r#type: MadtStructureType::GicDistributor as u8,
+            length: 24,
+            _reserved0: 0.into(),
+            gic_id: gic_id.into(),
+            base_addr: base_addr.into(),
+            vector_base: 0.into(),
+            gic_version: version as u8,
+            _reserved1: [0, 0, 0],
+        }
+    }
+}
+
+assert_same_size!(Gicd, [u8; 24]);
+aml_as_bytes!(Gicd);
+
+/// GIC MSI Frame Structure
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default, AsBytes)]
+pub struct GicMsi {
+    r#type: u8,
+    length: u8,
+    _reserved: U16,
+    gic_msi_frame_id: U32,
+    base_addr: U64,
+    flags: U32,
+    spi_count: U16,
+    spi_base: U16,
+}
+
+impl GicMsi {
+    pub fn new() -> Self {
+        Self {
+            r#type: MadtStructureType::GicMsiFrame as u8,
+            length: 24,
+            _reserved: 0.into(),
+            flags: 1.into(), /* Ignore SPI count and base until set */
+            ..Default::default()
+        }
+    }
+
+    pub fn gic_msi_frame_id(mut self, gic_msi_frame_id: u32) -> Self {
+        self.gic_msi_frame_id = gic_msi_frame_id.into();
+        self
+    }
+
+    pub fn base_addr(mut self, base_addr: u64) -> Self {
+        self.base_addr = base_addr.into();
+        self
+    }
+
+    pub fn spi_count_and_base(mut self, spi_count: u16, spi_base: u16) -> Self {
+        self.spi_count = spi_count.into();
+        self.spi_base = spi_base.into();
+        self.flags = 0.into();
+        self
+    }
+}
+
+assert_same_size!(GicMsi, [u8; 24]);
+aml_as_bytes!(GicMsi);
+
+/// GIC Redistributor (GICR) Structure
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default, AsBytes)]
+pub struct Gicr {
+    r#type: u8,
+    length: u8,
+    _reserved: U16,
+    discovery_range_base: U64,
+    discovery_range_length: U32,
+}
+
+impl Gicr {
+    pub fn new(discovery_range_base: u64, discovery_range_length: u32) -> Self {
+        Self {
+            r#type: MadtStructureType::GicRedistributor as u8,
+            length: 16,
+            _reserved: 0.into(),
+            discovery_range_base: discovery_range_base.into(),
+            discovery_range_length: discovery_range_length.into(),
+        }
+    }
+}
+
+assert_same_size!(Gicr, [u8; 16]);
+aml_as_bytes!(Gicr);
+
+/// GIC Interrupt Translation Service (ITS) Structure
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default, AsBytes)]
+pub struct GicIts {
+    r#type: u8,
+    length: u8,
+    _reserved0: U16,
+    gic_its_id: U32,
+    base_addr: U64,
+    _reserved1: U32,
+}
+
+impl GicIts {
+    pub fn new(gic_its_id: u32, base_addr: u64) -> Self {
+        Self {
+            r#type: MadtStructureType::GicTranslationService as u8,
+            length: 20,
+            _reserved0: 0.into(),
+            gic_its_id: gic_its_id.into(),
+            base_addr: base_addr.into(),
+            _reserved1: 0.into(),
+        }
+    }
+}
+
+assert_same_size!(GicIts, [u8; 20]);
+aml_as_bytes!(GicIts);
+
 /// RISC-V Interrupt Controller (RINTC) structure
 /// RISC-V platforms need to have a simple, per-hart interrupt controller
 /// available to supervisor mode.
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, Default, AsBytes)]
 pub struct RINTC {
-    pub r#type: u8,
-    pub length: u8,
-    pub version: u8,
+    r#type: u8,
+    length: u8,
+    version: u8,
     _reserved: u8,
-    pub flags: U32,
-    pub hart_id: U64,
-    pub acpi_processor_uid: U32,
+    flags: U32,
+    hart_id: U64,
+    acpi_processor_uid: U32,
 }
 
 #[repr(u32)]
@@ -154,7 +506,7 @@ pub enum HartStatus {
 impl RINTC {
     pub fn new(hart_status: HartStatus, mhartid: u64, acpi_processor_uid: u32) -> Self {
         Self {
-            r#type: RISCV_INTC_STRUCTURE,
+            r#type: MadtStructureType::RiscvIntc as u8,
             length: RINTC::len() as u8,
             version: 1,
             _reserved: 0,
@@ -209,7 +561,7 @@ impl IMSIC {
         group_index_shift: u8,
     ) -> Self {
         Self {
-            r#type: RISCV_IMSIC_STRUCTURE,
+            r#type: MadtStructureType::RiscvImsic as u8,
             length: IMSIC::len() as u8,
             version: 1,
             _reserved: [0, 0, 0, 0, 0],
@@ -264,7 +616,7 @@ impl APLIC {
         total_external_interrupt_sources: u16,
     ) -> Self {
         Self {
-            r#type: RISCV_APLIC_STRUCTURE,
+            r#type: MadtStructureType::RiscvAplic as u8,
             length: Self::len() as u8,
             version: 1,
             _reserved: 0,
@@ -316,6 +668,76 @@ mod tests {
         assert_eq!(Header::len(), get_size(&madt));
     }
 
+    fn default_madt() -> MADT {
+        MADT::new(
+            *b"FOOBAR",
+            *b"DECAFCOF",
+            0xdead_beef,
+            LocalInterruptController::Address(0xfecd_ba90),
+        )
+    }
+
+    #[test]
+    fn test_processor_local_apic() {
+        let mut madt = default_madt();
+
+        for i in 0..64 {
+            madt.add_structure(ProcessorLocalApic::new(
+                i,
+                i + 32,
+                match i % 3 {
+                    0 => EnabledStatus::Enabled,
+                    1 => EnabledStatus::Disabled,
+                    2 => EnabledStatus::DisabledOnlineCapable,
+                    _ => unreachable!(),
+                },
+            ));
+            check_checksum(&madt);
+        }
+    }
+
+    #[test]
+    fn test_ioapic() {
+        let mut madt = default_madt();
+        for i in 0..64 {
+            madt.add_structure(IoApic::new(i, i as u32 * 0x1000, i as u32 * 0x2000));
+            check_checksum(&madt);
+        }
+    }
+
+    #[test]
+    fn test_gicc() {
+        let mut madt = default_madt();
+
+        let gicc = Gicc::new(EnabledStatus::Enabled)
+            .cpu_interface_number(0x1000)
+            .acpi_processor_uid(0x2000)
+            .parking_protocol_version(0x3000)
+            .performance_interrupt(0x4000, Trigger::Edge)
+            .parked_address(0x5000)
+            .base_address(0x6000)
+            .virtual_registers(0x7000)
+            .control_block(0x8000)
+            .maintenance_interrupt(0x9000, Trigger::Edge)
+            .redistributor_base(0xa000)
+            .mpidr(0xb000)
+            .power_efficiency_class(0xc0)
+            .overflow_interrupt(0xd000)
+            .trbe_interrupt(0xe000);
+
+        madt.add_structure(gicc);
+        check_checksum(&madt);
+    }
+
+    #[test]
+    fn test_gicd() {
+        let mut madt = default_madt();
+
+        let gicd = Gicd::new(0x1020_3040, 0x5060_7080_90a0_b0c0, GicVersion::GICv1);
+        madt.add_structure(gicd);
+        check_checksum(&madt);
+    }
+
     #[test]
     fn test_rintc() {
         let mut madt = MADT::new(
@@ -329,7 +751,7 @@ mod tests {
 
         for i in 0..128 {
             let rintc = RINTC::new(HartStatus::Enabled, 42 + i as u64, (i + 0x1000) as u32);
-            madt.add_rintc(rintc);
+            madt.add_structure(rintc);
             check_checksum(&madt);
             assert_eq!(Header::len() + RINTC::len() * (i + 1), get_size(&madt));
         }
@@ -381,7 +803,7 @@ mod tests {
                 767,                                     /* total_external_interrupt_sources */
             );
 
-            madt.add_aplic(aplic);
+            madt.add_structure(aplic);
             check_checksum(&madt);
             assert_eq!(Header::len() + APLIC::len() * (i + 1), get_size(&madt));
         }
