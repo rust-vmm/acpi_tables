@@ -4,10 +4,11 @@
 //
 
 extern crate alloc;
-
-use crate::{u8sum, Aml, AmlSink, Checksum, TableHeader};
 use alloc::{boxed::Box, vec::Vec};
+
 use zerocopy::{byteorder, byteorder::LE, AsBytes};
+
+use crate::{aml_as_bytes, u8sum, Aml, AmlSink, Checksum, TableHeader};
 
 type U16 = byteorder::U16<LE>;
 type U32 = byteorder::U32<LE>;
@@ -320,13 +321,7 @@ impl CacheNode {
     }
 }
 
-impl Aml for CacheNode {
-    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for b in self.as_bytes() {
-            sink.byte(*b);
-        }
-    }
-}
+aml_as_bytes!(CacheNode);
 
 #[cfg(test)]
 mod tests {

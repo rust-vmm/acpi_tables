@@ -6,8 +6,9 @@
 use zerocopy::{byteorder, byteorder::LE, AsBytes};
 
 extern crate alloc;
-use crate::{Aml, AmlSink, Checksum, TableHeader};
 use alloc::{boxed::Box, vec::Vec};
+
+use crate::{aml_as_bytes, assert_same_size, Aml, AmlSink, Checksum, TableHeader};
 
 type U16 = byteorder::U16<LE>;
 type U32 = byteorder::U32<LE>;
@@ -168,15 +169,8 @@ impl RINTC {
     }
 }
 
-crate::assert_same_size!(RINTC, [u8; 0x14]);
-
-impl Aml for RINTC {
-    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.as_bytes() {
-            sink.byte(*byte);
-        }
-    }
-}
+assert_same_size!(RINTC, [u8; 0x14]);
+aml_as_bytes!(RINTC);
 
 // Even though IMSIC is a per-processor device, there should be only
 // one IMSIC structure present in the MADT for a RISC-V system that
@@ -233,15 +227,8 @@ impl IMSIC {
     }
 }
 
-crate::assert_same_size!(IMSIC, [u8; 16]);
-
-impl Aml for IMSIC {
-    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.as_bytes() {
-            sink.byte(*byte);
-        }
-    }
-}
+assert_same_size!(IMSIC, [u8; 16]);
+aml_as_bytes!(IMSIC);
 
 // The RISC-V AIA defines an APLIC for handling wired interrupts on a
 // RISC-V platform. In a machine without IMSICs, every RISC-V hart
@@ -265,8 +252,6 @@ pub struct APLIC {
     aplic_size: U32,
     total_external_interrupt_sources: U16,
 }
-
-crate::assert_same_size!(APLIC, [u8; 38]);
 
 impl APLIC {
     pub fn new(
@@ -298,13 +283,8 @@ impl APLIC {
     }
 }
 
-impl Aml for APLIC {
-    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.as_bytes() {
-            sink.byte(*byte);
-        }
-    }
-}
+assert_same_size!(APLIC, [u8; 38]);
+aml_as_bytes!(APLIC);
 
 #[cfg(test)]
 mod tests {

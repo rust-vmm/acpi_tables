@@ -100,13 +100,7 @@ impl EcamEntry {
     }
 }
 
-impl Aml for EcamEntry {
-    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.as_bytes() {
-            sink.byte(*byte);
-        }
-    }
-}
+crate::aml_as_bytes!(EcamEntry);
 
 #[cfg(test)]
 mod tests {
