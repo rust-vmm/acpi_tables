@@ -7,10 +7,11 @@ MCFG, etc) as well as generate AML for filling a DSDT table.
 
 ## Usage
 
-There are fifteen modules:
+There are sixteen modules:
 
 * `aml` provides the ability to generate AML code, see the chapter titled "ACPI
   Machine Language (AML) Specification" in the ACPI Specification.
+* `bert` contains routines for creating a `BERT` table
 * `cedt` contains routines for creating a `CEDT` table (see the CXL specification
   for more details)
 * `facs` contains routines for creating a `FACS` table
