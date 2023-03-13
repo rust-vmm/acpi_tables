@@ -15,6 +15,7 @@ pub mod cedt;
 pub mod facs;
 pub mod fadt;
 pub mod gas;
+pub mod hest;
 pub mod madt;
 pub mod mcfg;
 pub mod pptt;
