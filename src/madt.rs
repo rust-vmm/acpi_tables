@@ -8,7 +8,7 @@ use zerocopy::{byteorder, byteorder::LE, AsBytes};
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
-use crate::{aml_as_bytes, assert_same_size, Aml, AmlSink, Checksum, TableHeader};
+use crate::{aml_as_bytes, assert_same_size, mutable_setter, Aml, AmlSink, Checksum, TableHeader};
 
 type U16 = byteorder::U16<LE>;
 type U32 = byteorder::U32<LE>;
@@ -205,7 +205,7 @@ pub struct Gicc {
     cpu_interface_number: U32,
     acpi_processor_uid: U32,
     flags: U32,
-    parking_protocol_ver: U32,
+    parking_protocol_version: U32,
     performance_interrupt: U32,
     parked_address: U64,
     base_address: U64,
@@ -254,21 +254,6 @@ impl Gicc {
         }
     }
 
-    pub fn cpu_interface_number(mut self, number: u32) -> Self {
-        self.cpu_interface_number = number.into();
-        self
-    }
-
-    pub fn acpi_processor_uid(mut self, uid: u32) -> Self {
-        self.acpi_processor_uid = uid.into();
-        self
-    }
-
-    pub fn parking_protocol_version(mut self, version: u32) -> Self {
-        self.parking_protocol_ver = version.into();
-        self
-    }
-
     pub fn performance_interrupt(mut self, gsi: u32, trigger: Trigger) -> Self {
         if trigger == Trigger::Edge {
             let flags = self.flags.get();
@@ -276,26 +261,6 @@ impl Gicc {
                 .set(flags | GiccFlags::PerformanceInterruptEdgeTriggered as u32);
         }
         self.performance_interrupt = gsi.into();
-        self
-    }
-
-    pub fn parked_address(mut self, address: u64) -> Self {
-        self.parked_address = address.into();
-        self
-    }
-
-    pub fn base_address(mut self, address: u64) -> Self {
-        self.base_address = address.into();
-        self
-    }
-
-    pub fn virtual_registers(mut self, address: u64) -> Self {
-        self.virtual_registers = address.into();
-        self
-    }
-
-    pub fn control_block(mut self, address: u64) -> Self {
-        self.control_block_registers = address.into();
         self
     }
 
@@ -309,30 +274,18 @@ impl Gicc {
         self
     }
 
-    pub fn redistributor_base(mut self, address: u64) -> Self {
-        self.redistributor_base = address.into();
-        self
-    }
-
-    pub fn mpidr(mut self, mpidr: u64) -> Self {
-        self.mpidr = mpidr.into();
-        self
-    }
-
-    pub fn power_efficiency_class(mut self, class: u8) -> Self {
-        self.power_efficiency_class = class;
-        self
-    }
-
-    pub fn overflow_interrupt(mut self, gsi: u16) -> Self {
-        self.overflow_interrupt = gsi.into();
-        self
-    }
-
-    pub fn trbe_interrupt(mut self, gsi: u16) -> Self {
-        self.trbe_interrupt = gsi.into();
-        self
-    }
+    mutable_setter!(cpu_interface_number, u32);
+    mutable_setter!(acpi_processor_uid, u32);
+    mutable_setter!(parking_protocol_version, u32);
+    mutable_setter!(parked_address, u64);
+    mutable_setter!(base_address, u64);
+    mutable_setter!(virtual_registers, u64);
+    mutable_setter!(control_block_registers, u64);
+    mutable_setter!(redistributor_base, u64);
+    mutable_setter!(mpidr, u64);
+    mutable_setter!(power_efficiency_class, u8);
+    mutable_setter!(overflow_interrupt, u16);
+    mutable_setter!(trbe_interrupt, u16);
 }
 
 assert_same_size!(Gicc, [u8; 82]);
@@ -405,16 +358,8 @@ impl GicMsi {
         }
     }
 
-    pub fn gic_msi_frame_id(mut self, gic_msi_frame_id: u32) -> Self {
-        self.gic_msi_frame_id = gic_msi_frame_id.into();
-        self
-    }
-
-    pub fn base_addr(mut self, base_addr: u64) -> Self {
-        self.base_addr = base_addr.into();
-        self
-    }
-
+    mutable_setter!(gic_msi_frame_id, u32);
+    mutable_setter!(base_addr, u64);
     pub fn spi_count_and_base(mut self, spi_count: u16, spi_base: u16) -> Self {
         self.spi_count = spi_count.into();
         self.spi_base = spi_base.into();
@@ -717,7 +662,7 @@ mod tests {
             .parked_address(0x5000)
             .base_address(0x6000)
             .virtual_registers(0x7000)
-            .control_block(0x8000)
+            .control_block_registers(0x8000)
             .maintenance_interrupt(0x9000, Trigger::Edge)
             .redistributor_base(0xa000)
             .mpidr(0xb000)
