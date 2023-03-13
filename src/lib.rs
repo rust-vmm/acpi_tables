@@ -211,5 +211,15 @@ macro_rules! aml_as_bytes {
                 }
             }
         }
-    }
+    };
+}
+
+#[macro_export]
+macro_rules! mutable_setter {
+    ($name:ident, $x:ty) => {
+        pub fn $name(mut self, $name: $x) -> Self {
+            self.$name = $name.into();
+            self
+        }
+    };
 }
