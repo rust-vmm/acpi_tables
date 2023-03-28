@@ -29,7 +29,6 @@ pub mod xsdt;
 
 extern crate alloc;
 
-use alloc::vec::Vec;
 use zerocopy::{byteorder, byteorder::LE, AsBytes};
 
 type U32 = byteorder::U32<LE>;
@@ -62,9 +61,9 @@ pub trait AmlSink {
         }
     }
 
-    fn vec(&mut self, v: Vec<u8>) {
+    fn vec(&mut self, v: &[u8]) {
         for byte in v {
-            self.byte(byte);
+            self.byte(*byte);
         }
     }
 }

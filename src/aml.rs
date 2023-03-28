@@ -279,7 +279,7 @@ impl<'a> Aml for Package<'a> {
         }
 
         sink.byte(PACKAGEOP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -307,7 +307,7 @@ impl<'a> Aml for VarPackageTerm<'a> {
         }
 
         sink.byte(VARPACKAGEOP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -480,7 +480,7 @@ impl<'a> Aml for ResourceTemplate<'a> {
         }
 
         sink.byte(BUFFEROP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -737,7 +737,7 @@ impl<'a> Aml for Device<'a> {
 
         sink.byte(EXTOPPREFIX); /* ExtOpPrefix */
         sink.byte(DEVICEOP); /* DeviceOp */
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -769,7 +769,7 @@ impl<'a> Aml for Scope<'a> {
         }
 
         sink.byte(SCOPEOP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -831,7 +831,7 @@ impl<'a> Aml for Method<'a> {
         }
 
         sink.byte(METHODOP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -926,7 +926,7 @@ impl Aml for Field {
 
         sink.byte(EXTOPPREFIX);
         sink.byte(FIELDOP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -1007,7 +1007,7 @@ impl<'a> Aml for If<'a> {
         }
 
         sink.byte(IFOP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -1037,7 +1037,7 @@ impl<'a> Aml for Else<'a> {
         }
 
         sink.byte(ELSEOP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -1239,7 +1239,7 @@ impl<'a> Aml for While<'a> {
         }
 
         sink.byte(WHILEOP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -1459,7 +1459,7 @@ impl<'a> Aml for BufferTerm<'a> {
         }
 
         sink.byte(BUFFEROP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -1488,7 +1488,7 @@ impl Aml for BufferData {
         }
 
         sink.byte(BUFFEROP);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
@@ -1613,7 +1613,7 @@ impl<'a> Aml for PowerResource<'a> {
 
         sink.byte(POWERRESOURCEOP);
         sink.byte(EXTOPPREFIX);
-        sink.vec(bytes);
+        sink.vec(&bytes);
     }
 }
 
