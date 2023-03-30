@@ -531,7 +531,7 @@ enum AddressSpaceType {
 }
 
 /// AddressSpaceCachable represent cache types for AddressSpace object
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AddressSpaceCachable {
     NotCacheable,
     Cacheable,
@@ -836,7 +836,7 @@ impl<'a> Aml for Method<'a> {
 }
 
 /// FieldAccessType defines the field accessing types.
-#[derive(Clone, Copy)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FieldAccessType {
     Any,
     Byte,
@@ -847,14 +847,14 @@ pub enum FieldAccessType {
 }
 
 /// FieldLockRule defines the rules whether to use the Global Lock.
-#[derive(Clone, Copy)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FieldLockRule {
     NoLock = 0,
     Lock = 1,
 }
 
 /// FieldUpdateRule defines the rules to update the field.
-#[derive(Clone, Copy)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FieldUpdateRule {
     Preserve = 0,
     WriteAsOnes = 1,
@@ -862,6 +862,7 @@ pub enum FieldUpdateRule {
 }
 
 /// FieldEntry defines the field entry.
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FieldEntry {
     Named([u8; 4], usize),
     Reserved(usize),
@@ -931,7 +932,7 @@ impl Aml for Field {
 }
 
 /// The space type for OperationRegion object
-#[derive(Clone, Copy)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum OpRegionSpace {
     SystemMemory,
     SystemIO,
