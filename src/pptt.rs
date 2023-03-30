@@ -195,6 +195,7 @@ pub struct CacheNodeBuilder {
     flags: u32,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u8)]
 pub enum AllocationType {
     Read = 0,
@@ -202,6 +203,7 @@ pub enum AllocationType {
     Both = 1 << 1,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u8)]
 pub enum CacheType {
     Data = 0 << 2,
@@ -209,6 +211,7 @@ pub enum CacheType {
     Unified = 1 << 3,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u8)]
 pub enum WritePolicy {
     Writeback = 0 << 4,
