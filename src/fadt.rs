@@ -10,6 +10,7 @@ type U16 = byteorder::U16<LE>;
 type U32 = byteorder::U32<LE>;
 type U64 = byteorder::U64<LE>;
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u32)]
 pub enum Flags {
     Wbinvd = 1 << 0,
@@ -39,6 +40,7 @@ pub enum Flags {
     PersistentCpuCachesArePersistent = 2 << 22,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u8)]
 pub enum PmProfile {
     Unspecified = 0,
