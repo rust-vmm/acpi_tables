@@ -50,7 +50,7 @@ pub struct MADT {
     has_imsic: bool,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LocalInterruptController {
     Riscv,
     Address(u32),
@@ -441,7 +441,7 @@ pub struct RINTC {
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum HartStatus {
     Disabled = 0,
     Enabled = 1,
