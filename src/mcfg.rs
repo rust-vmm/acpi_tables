@@ -22,7 +22,7 @@ impl MCFG {
     pub fn new(oem_id: [u8; 6], oem_table_id: [u8; 8], oem_revision: u32) -> Self {
         let mut header = TableHeader {
             signature: *b"MCFG",
-            length: 0.into(),
+            length: ((TableHeader::len() + 8) as u32).into(),
             revision: 1,
             checksum: 0,
             oem_id,
@@ -77,6 +77,9 @@ impl Aml for MCFG {
             sink.byte(*byte);
         }
 
+        // 8 reserved bytes
+        sink.qword(0);
+
         for entry in &self.entries {
             entry.to_aml_bytes(sink);
         }
@@ -114,14 +117,14 @@ mod tests {
         mcfg.to_aml_bytes(&mut bytes);
         let sum = bytes.iter().fold(0u8, |acc, x| acc.wrapping_add(*x));
         assert_eq!(sum, 0);
-        assert_eq!(TableHeader::len(), bytes.len());
+        assert_eq!(TableHeader::len() + 8, bytes.len());
 
         mcfg.add_ecam(0xc000_0000, 42, 0, 0x20);
         let mut bytes = Vec::new();
         mcfg.to_aml_bytes(&mut bytes);
         let sum = bytes.iter().fold(0u8, |acc, x| acc.wrapping_add(*x));
         assert_eq!(sum, 0);
-        assert_eq!(TableHeader::len() + EcamEntry::len(), bytes.len());
+        assert_eq!(TableHeader::len() + 8 + EcamEntry::len(), bytes.len());
 
         mcfg.add_ecam(0x1234_5678, 3920, 5, 0xfe);
         let mut bytes = Vec::new();
@@ -129,6 +132,6 @@ mod tests {
         let sum = bytes.iter().fold(0u8, |acc, x| acc.wrapping_add(*x));
         assert_eq!(sum, 0);
 
-        assert_eq!(TableHeader::len() + EcamEntry::len() * 2, bytes.len());
+        assert_eq!(TableHeader::len() + 8 + EcamEntry::len() * 2, bytes.len());
     }
 }
