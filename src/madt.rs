@@ -438,6 +438,9 @@ pub struct RINTC {
     flags: U32,
     hart_id: U64,
     acpi_processor_uid: U32,
+    ext_int_ctrl_id: U32,
+    imsic_base_addr: U64,
+    imsic_size: U32,
 }
 
 #[repr(u32)]
@@ -449,7 +452,14 @@ pub enum HartStatus {
 }
 
 impl RINTC {
-    pub fn new(hart_status: HartStatus, mhartid: u64, acpi_processor_uid: u32) -> Self {
+    pub fn new(
+        hart_status: HartStatus,
+        mhartid: u64,
+        acpi_processor_uid: u32,
+        ext_int_ctrl_id: u32,
+        imsic_base_addr: u64,
+        imsic_size: u32,
+    ) -> Self {
         Self {
             r#type: MadtStructureType::RiscvIntc as u8,
             length: RINTC::len() as u8,
@@ -458,6 +468,9 @@ impl RINTC {
             flags: (hart_status as u32).into(),
             hart_id: mhartid.into(),
             acpi_processor_uid: acpi_processor_uid.into(),
+            ext_int_ctrl_id: ext_int_ctrl_id.into(),
+            imsic_base_addr: imsic_base_addr.into(),
+            imsic_size: imsic_size.into(),
         }
     }
 
@@ -466,7 +479,7 @@ impl RINTC {
     }
 }
 
-assert_same_size!(RINTC, [u8; 0x14]);
+assert_same_size!(RINTC, [u8; 0x24]);
 aml_as_bytes!(RINTC);
 
 // Even though IMSIC is a per-processor device, there should be only
@@ -695,10 +708,25 @@ mod tests {
         assert_eq!(Header::len(), get_size(&madt));
 
         for i in 0..128 {
-            let rintc = RINTC::new(HartStatus::Enabled, 42 + i as u64, (i + 0x1000) as u32);
+            let rintc = RINTC::new(
+                HartStatus::Enabled,
+                // mhartid
+                42 + i,
+                // ACPI UID
+                (i + 0x1000) as u32,
+                // external interrupt controller id,
+                i as u32,
+                // imsic base address
+                i * 4096 + 0x8000_0000_0000,
+                // imsic size
+                4096,
+            );
             madt.add_structure(rintc);
             check_checksum(&madt);
-            assert_eq!(Header::len() + RINTC::len() * (i + 1), get_size(&madt));
+            assert_eq!(
+                Header::len() + RINTC::len() * (i + 1) as usize,
+                get_size(&madt)
+            );
         }
     }
 
