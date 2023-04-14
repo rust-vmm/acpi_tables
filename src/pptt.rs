@@ -53,7 +53,7 @@ impl PPTT {
     pub fn new(oem_id: [u8; 6], oem_table_id: [u8; 8], oem_revision: u32) -> Self {
         let header = TableHeader {
             signature: *b"PPTT",
-            length: 0.into(),
+            length: (TableHeader::len() as u32).into(),
             revision: 1,
             checksum: 0,
             oem_id,
@@ -102,7 +102,7 @@ enum NodeType {
 pub struct ProcessorNode {
     pub flags: u32,
     pub parent: u32,
-    pub acpi_processor_id: [u8; 4],
+    pub acpi_processor_id: u32,
     resources: Vec<CacheHandle>,
 }
 
@@ -118,10 +118,10 @@ impl ProcessorNode {
     }
 
     fn len(&self) -> usize {
-        20 + self.resources.len() * 4
+        20 + self.resources.len() * core::mem::size_of::<u32>()
     }
 
-    pub fn new(parent: Option<&ProcessorHandle>, acpi_processor_id: [u8; 4]) -> Self {
+    pub fn new(parent: Option<&ProcessorHandle>, acpi_processor_id: u32) -> Self {
         Self {
             flags: 0,
             parent: match parent {
@@ -173,9 +173,7 @@ impl Aml for ProcessorNode {
         sink.word(reserved);
         sink.dword(self.flags);
         sink.dword(self.parent);
-        for b in &self.acpi_processor_id {
-            sink.byte(*b);
-        }
+        sink.dword(self.acpi_processor_id);
         sink.dword(self.resources.len() as u32);
         for r in &self.resources {
             sink.dword(r.0);
@@ -361,7 +359,7 @@ mod tests {
 
         let mut size = TableHeader::len() + CacheNode::len() * 2;
         for i in 0..128 {
-            let cpu = ProcessorNode::new(None, (i as u32).to_le_bytes())
+            let cpu = ProcessorNode::new(None, i as u32)
                 .physical()
                 .valid()
                 .leaf()
