@@ -111,13 +111,13 @@ impl CxlVersion {
 
 /// CHBS - CXL Host Bridge Structure
 pub struct CxlHostBridge {
-    host_bridge_uid: [u8; 4],
+    host_bridge_uid: u32,
     cxl_version: CxlVersion,
     port_base: u64,
 }
 
 impl CxlHostBridge {
-    pub fn new(host_bridge_uid: [u8; 4], cxl_version: CxlVersion, port_base: u64) -> Self {
+    pub fn new(host_bridge_uid: u32, cxl_version: CxlVersion, port_base: u64) -> Self {
         Self {
             host_bridge_uid,
             cxl_version,
@@ -139,9 +139,7 @@ impl Aml for CxlHostBridge {
         sink.byte(CedtStructureType::Chbs as u8);
         sink.byte(0); // reserved
         sink.byte(Self::len() as u8);
-        for byte in &self.host_bridge_uid {
-            sink.byte(*byte);
-        }
+        sink.dword(self.host_bridge_uid);
         sink.dword(self.cxl_version as u32);
         sink.qword(self.port_base);
         sink.qword(self.cxl_version.len() as u64);
@@ -447,11 +445,7 @@ mod tests {
             0x1234_5678,
         );
 
-        cedt.add_host_bridge(CxlHostBridge::new(
-            [1, 2, 3, 4],
-            CxlVersion::Cxl2,
-            0x8_1234_5678,
-        ));
+        cedt.add_host_bridge(CxlHostBridge::new(0xcdef, CxlVersion::Cxl2, 0x8_1234_5678));
 
         let mut bytes = Vec::new();
         cedt.to_aml_bytes(&mut bytes);
