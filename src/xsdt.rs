@@ -5,37 +5,21 @@
 
 extern crate alloc;
 
-use crate::{Aml, AmlSink, Checksum};
+use crate::{Aml, AmlSink, Checksum, TableHeader};
 use alloc::vec::Vec;
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
-
-type U32 = byteorder::U32<LE>;
-
-#[repr(C, packed)]
-#[derive(Clone, Copy, Default, AsBytes)]
-struct Header {
-    pub signature: [u8; 4],
-    pub length: U32,
-    pub revision: u8,
-    pub checksum: u8,
-    pub oem_id: [u8; 6],
-    pub oem_table_id: [u8; 8],
-    pub oem_revision: U32,
-    pub creator_id: [u8; 4],
-    pub creator_revision: [u8; 4],
-}
+use zerocopy::AsBytes;
 
 pub struct XSDT {
-    header: Header,
+    header: TableHeader,
     checksum: Checksum,
     entries: Vec<u64>,
 }
 
 impl XSDT {
     pub fn new(oem_id: [u8; 6], oem_table_id: [u8; 8], oem_revision: u32) -> Self {
-        let mut header = Header {
+        let mut header = TableHeader {
             signature: *b"XSDT",
-            length: (core::mem::size_of::<XSDT>() as u32).into(),
+            length: (TableHeader::len() as u32).into(),
             revision: 1,
             checksum: 0,
             oem_id,
@@ -57,6 +41,12 @@ impl XSDT {
     }
 
     pub fn add_entry(&mut self, entry: u64) {
+        let old_len = self.header.length.get();
+        let new_len = old_len + core::mem::size_of::<u64>() as u32;
+        self.header.length.set(new_len);
+
+        self.checksum.delete(old_len.as_bytes());
+        self.checksum.append(new_len.as_bytes());
         self.checksum.append(&entry.to_le_bytes());
         self.header.checksum = self.checksum.value();
         self.entries.push(entry);
@@ -64,7 +54,7 @@ impl XSDT {
 
     #[cfg(test)]
     fn len(&self) -> usize {
-        core::mem::size_of::<XSDT>() + self.entries.len() * core::mem::size_of::<u64>()
+        TableHeader::len() + self.entries.len() * core::mem::size_of::<u64>()
     }
 }
 
