@@ -16,6 +16,7 @@ pub mod facs;
 pub mod fadt;
 pub mod gas;
 pub mod hest;
+pub mod hmat;
 pub mod madt;
 pub mod mcfg;
 pub mod pptt;
