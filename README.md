@@ -7,7 +7,7 @@ MCFG, etc) as well as generate AML for filling a DSDT table.
 
 ## Usage
 
-There are seventeen modules:
+There are eighteen modules:
 
 * `aml` provides the ability to generate AML code, see the chapter titled "ACPI
   Machine Language (AML) Specification" in the ACPI Specification.
@@ -16,6 +16,7 @@ There are seventeen modules:
   for more details)
 * `facs` contains routines for creating a `FACS` table
 * `fadt` contains routines for creating a `FADT` table (also known as FACP)
+* `hmat` contains routines for creating a `HMAT` table
 * `hest` contains routines for creating a `HEST` table, except for the
   parts that are specified by UEFI
 * `madt` contains routines for creating an `MADT` table (also known as APIC)
