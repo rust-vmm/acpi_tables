@@ -24,7 +24,8 @@ impl SRAT {
     pub fn new(oem_id: [u8; 6], oem_table_id: [u8; 8], oem_revision: u32) -> Self {
         let mut header = TableHeader {
             signature: *b"SRAT",
-            length: (TableHeader::len() as u32).into(),
+            // 12 reserved bytes
+            length: (TableHeader::len() as u32 + 12).into(),
             revision: 1,
             checksum: 0,
             oem_id,
@@ -36,6 +37,7 @@ impl SRAT {
 
         let mut cksum = Checksum::default();
         cksum.append(header.as_bytes());
+        cksum.add(1); // from the reserved `1` immediately after the header
         header.checksum = cksum.value();
 
         Self {
@@ -74,6 +76,9 @@ impl Aml for SRAT {
         for byte in self.header.as_bytes() {
             sink.byte(*byte);
         }
+
+        sink.dword(1); // reserved to be 1 for backward compatibility.
+        sink.qword(0); // reserved
 
         for st in &self.structures {
             st.to_aml_bytes(sink);
