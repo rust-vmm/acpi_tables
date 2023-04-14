@@ -9,6 +9,8 @@ use zerocopy::{byteorder, byteorder::LE, AsBytes};
 type U32 = byteorder::U32<LE>;
 type U64 = byteorder::U64<LE>;
 
+use crate::{aml_as_bytes, Aml, AmlSink};
+
 #[repr(C, packed)]
 #[derive(Clone, Copy, Default, AsBytes)]
 pub struct Rsdp {
@@ -37,7 +39,7 @@ impl Rsdp {
             _reserved: [0; 3],
         };
 
-        rsdp.checksum = super::generate_checksum(rsdp.as_bytes());
+        rsdp.checksum = super::generate_checksum(&rsdp.as_bytes()[0..20]);
         rsdp.extended_checksum = super::generate_checksum(rsdp.as_bytes());
         rsdp
     }
@@ -47,6 +49,8 @@ impl Rsdp {
     }
 }
 
+aml_as_bytes!(Rsdp);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,11 +59,6 @@ mod tests {
     fn test_rsdp() {
         let rsdp = Rsdp::new(*b"CHYPER", 0xdead_beef);
         let sum = rsdp
-            .as_bytes()
-            .iter()
-            .fold(0u8, |acc, x| acc.wrapping_add(*x));
-        assert_eq!(sum, 0);
-        let sum: u8 = rsdp
             .as_bytes()
             .iter()
             .fold(0u8, |acc, x| acc.wrapping_add(*x));
