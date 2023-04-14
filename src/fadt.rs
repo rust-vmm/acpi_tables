@@ -14,22 +14,31 @@ type U64 = byteorder::U64<LE>;
 #[repr(u32)]
 pub enum Flags {
     Wbinvd = 1 << 0,
+    // NOTE: This bit is ignored on HW_REDUCED platforms
     WbinvdFlush = 1 << 1,
+    // NOTE: This bit is ignored on HW_REDUCED platforms
     ProcC1 = 1 << 2,
+    // NOTE: This bit is ignored on HW_REDUCED platforms
     PLvl2Up = 1 << 3,
     PwrButton = 1 << 4,
     SlpButton = 1 << 5,
     FixRtc = 1 << 6,
+    // NOTE: This bit is ignored on HW_REDUCED platforms
     RtcS4 = 1 << 7,
+    // NOTE: This bit is ignored on HW_REDUCED platforms
     TmrValExt = 1 << 8,
     DckCap = 1 << 9,
     ResetRegSup = 1 << 10,
     SealedCase = 1 << 11,
     Headless = 1 << 12,
+    // NOTE: This bit is ignored on HW_REDUCED platforms
     CpuSwSlp = 1 << 13,
+    // NOTE: This bit is ignored on HW_REDUCED platforms
     PciExpWak = 1 << 14,
     UsePlatformClock = 1 << 15,
+    // NOTE: This bit is ignored on HW_REDUCED platforms
     S4RtcStsValid = 1 << 16,
+    // NOTE: This bit is ignored on HW_REDUCED platforms
     RemotePowerOnCapable = 1 << 17,
     ForceApicClusterModel = 1 << 18,
     ForceApicPhysicalDestinationMode = 1 << 19,
@@ -71,8 +80,9 @@ pub struct FADTBuilder {
     pub dsdt: U32,
     _reserved0: u8,
     pub preferred_pm_profile: u8,
+    // NOTE: For HW_REDUCED platforms, sci_int through century are ignored
     pub sci_int: U16,
-    pub smi_cmd: u32,
+    pub smi_cmd: U32,
     pub acpi_enable: u8,
     pub acpi_disable: u8,
     pub s4bios_req: u8,
@@ -111,9 +121,11 @@ pub struct FADTBuilder {
     pub fadt_minor_version: u8,
     pub x_firmware_ctrl: U64,
     pub x_dsdt: U64,
+    // NOTE: for HW_REDUCED platforms, x_pm1a_evt_blk through x_gpe1_blk are ignored
     pub x_pm1a_evt_blk: GAS,
     pub x_pm1b_evt_blk: GAS,
     pub x_pm1a_cnt_blk: GAS,
+    pub x_pm1b_cnt_blk: GAS,
     pub x_pm2_cnt_blk: GAS,
     pub x_pm_tmr_blk: GAS,
     pub x_gpe0_blk: GAS,
@@ -142,13 +154,17 @@ impl Aml for FADT {
 }
 
 impl FADTBuilder {
-    pub fn new() -> Self {
+    pub fn new(oem_id: [u8; 6], oem_table_id: [u8; 8], oem_revision: u32) -> Self {
         Self {
             signature: *b"FACP",
             major_version: 6,      // TODO: should come from ACPI spec version #
             fadt_minor_version: 5, // TODO: should come from ACPI spec version #
             creator_id: crate::CREATOR_ID,
             creator_revision: crate::CREATOR_REVISION,
+            length: (FADT::len() as u32).into(),
+            oem_id,
+            oem_table_id,
+            oem_revision: oem_revision.into(),
             ..Default::default()
         }
     }
@@ -235,7 +251,7 @@ mod test {
     #[test]
     fn test_fadt() {
         let mut bytes = Vec::new();
-        let fadt = FADTBuilder::new()
+        let fadt = FADTBuilder::new(*b"TEST__", *b"TESTTEST", 0x4237_5689)
             .acpi_enable()
             .dsdt_64(0x8000_0000_0000)
             .firmware_ctrl_64(0x8001_0000_0000)
