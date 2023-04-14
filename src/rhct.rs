@@ -44,12 +44,11 @@ impl RHCT {
         oem_table_id: [u8; 8],
         oem_revision: u32,
         timebase_frequency: u64,
-        array_offset: u32,
     ) -> Self {
         let mut header = Header {
             table_header: TableHeader {
                 signature: *b"RHCT",
-                length: 0.into(),
+                length: (Header::len() as u32).into(),
                 revision: 1,
                 checksum: 0,
                 oem_id,
@@ -61,7 +60,7 @@ impl RHCT {
             _reserved: 0u32,
             timebase_frequency: timebase_frequency.into(),
             rhct_nodes: 0.into(),
-            array_offset: array_offset.into(),
+            array_offset: 56.into(),
         };
 
         let mut cksum = Checksum::default();
@@ -81,8 +80,14 @@ impl RHCT {
         let new_len = len + old_len;
         self.header.table_header.length.set(new_len);
 
-        // Remove the bytes from the old length, add the new length
-        // and the new data.
+        // Update the current node count
+        let old_node_count = self.header.rhct_nodes.get();
+        let new_node_count = old_node_count + 1;
+        self.header.rhct_nodes = new_node_count.into();
+        self.checksum.delete(old_node_count.as_bytes());
+        self.checksum.append(new_node_count.as_bytes());
+
+        // Update the length and data
         self.checksum.delete(old_len.as_bytes());
         self.checksum.append(new_len.as_bytes());
         self.checksum.add(sum);
@@ -155,9 +160,9 @@ impl IsaStringNode {
 
 impl Aml for IsaStringNode {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        let padding = self.len() % 2 != 0;
         // ISA string length (including NULL terminator)
         let strlen = self.string.len() as u16 + 1;
+        let padding_reqd = strlen % 2 == 1;
         sink.word(RhctNodeType::IsaString as u16);
         sink.word(self.len() as u16);
         sink.word(Self::REVISION);
@@ -166,7 +171,7 @@ impl Aml for IsaStringNode {
             sink.byte(byte);
         }
         sink.byte(0); // NULL terminator
-        if padding {
+        if padding_reqd {
             sink.byte(0);
         }
     }
@@ -182,26 +187,26 @@ impl Aml for IsaStringNode {
 // HartInfoNode structure, which contains N offsets (one for each
 // hart), and they all point to the same (single) IsaNodeString node.
 pub struct HartInfoNode {
-    processor_uid: [u8; 4],
+    processor_uid: u32,
     handle: u32,
 }
 
 impl HartInfoNode {
     const REVISION: u16 = 1;
 
-    pub fn new(processor_uid: [u8; 4], handle: &IsaStringHandle) -> Self {
+    pub fn new(processor_uid: u32, handle: &IsaStringHandle) -> Self {
         Self {
             processor_uid,
             handle: handle.0,
         }
     }
 
-    // NOTE: assumes 1 handle for now
+    // NOTE: assumes 1 handle for now, general
+    // formula is 12 + 4 * N
     fn len() -> usize {
-        16
+        12 + 4
     }
 
-    // NOTE: assumes 1 handle for now
     fn u8sum(&self) -> u8 {
         u8sum(self)
     }
@@ -212,12 +217,10 @@ impl Aml for HartInfoNode {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let ty = RhctNodeType::HartInfo as u16;
         sink.word(ty);
+        sink.word(Self::len() as u16);
         sink.word(Self::REVISION);
         sink.word(1); // only 1 handle for now
-        for b in &self.processor_uid {
-            sink.byte(*b);
-        }
-
+        sink.dword(self.processor_uid);
         sink.dword(self.handle);
     }
 }
@@ -235,7 +238,6 @@ mod tests {
             [b'R', b'I', b'V', b'O', b'S', 0, 0, 0], /* oem_table_id */
             42u32,                                   /* oem_revision */
             0x9012_1234_5678,                        /* timebase_frequency */
-            0x4242_4242,                             /* array_offset */
         );
 
         rhct.to_aml_bytes(&mut bytes);
@@ -251,7 +253,6 @@ mod tests {
             [b'R', b'I', b'V', b'O', b'S', 0, 0, 0], /* oem_table_id */
             42u32,                                   /* oem_revision */
             0x9012_1234_5678,                        /* timebase_frequency */
-            0x4242_4242,                             /* array_offset */
         );
 
         let _ = rhct.add_isa_string("foobar");
@@ -271,14 +272,18 @@ mod tests {
             [b'A', b'C', b'P', b'I', 0, 0, 0, 0], /* oem_table_id */
             42u32,                                /* oem_revision */
             0x9012_1234_5678,                     /* timebase_frequency */
-            0x4242_4242,                          /* array_offset */
         );
 
         let h = rhct.add_isa_string("foobar");
-        let _ = rhct.add_isa_string("blah");
+        let b = rhct.add_isa_string("blah");
 
         for i in 0..128 {
-            let hi = HartInfoNode::new([0, 1, 2, i], &h);
+            let hi = if i < 64 {
+                HartInfoNode::new(i as u32, &h)
+            } else {
+                HartInfoNode::new(i as u32, &b)
+            };
+
             rhct.add_hart_info(hi);
         }
 
