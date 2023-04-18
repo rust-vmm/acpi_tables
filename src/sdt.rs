@@ -5,6 +5,7 @@
 
 extern crate alloc;
 
+use crate::{Aml, AmlSink};
 use alloc::vec::Vec;
 
 #[repr(packed)]
@@ -42,6 +43,12 @@ pub struct Sdt {
     data: Vec<u8>,
 }
 
+impl AmlSink for Sdt {
+    fn byte(&mut self, byte: u8) {
+        self.append(byte);
+    }
+}
+
 impl Sdt {
     pub fn new(
         signature: [u8; 4],
@@ -61,8 +68,8 @@ impl Sdt {
         data.extend_from_slice(&oem_id);
         data.extend_from_slice(&oem_table);
         data.extend_from_slice(&oem_revision.to_le_bytes());
-        data.extend_from_slice(b"CLDH");
-        data.extend_from_slice(&0u32.to_le_bytes());
+        data.extend_from_slice(&crate::CREATOR_ID);
+        data.extend_from_slice(&crate::CREATOR_REVISION);
         assert_eq!(data.len(), 36);
 
         data.resize(length as usize, 0);
@@ -130,6 +137,12 @@ impl Sdt {
 
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
+    }
+}
+
+impl Aml for Sdt {
+    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
+        sink.vec(&self.data);
     }
 }
 
