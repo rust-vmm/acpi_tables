@@ -21,6 +21,7 @@ pub mod madt;
 pub mod mcfg;
 pub mod pptt;
 pub mod rhct;
+pub mod rimt;
 pub mod rsdp;
 pub mod sdt;
 pub mod slit;
