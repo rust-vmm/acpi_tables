@@ -23,6 +23,7 @@ There are eighteen modules:
 * `mcfg` contains routines for creating an `MCFG` table
 * `pptt` contains routines for creating a `PPTT` table
 * `rhct` contains routines for creating a `RHCT` table
+* `rimt` contains routines for creating a `RIMT` table
 * `rsdp` contains a helper for creating a `RSDP` table
 * `sdt` provides the ability to build user defined tables including header and
   checksum validation
