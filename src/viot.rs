@@ -23,7 +23,7 @@ impl VIOT {
     pub fn new(oem_id: [u8; 6], oem_table_id: [u8; 8], oem_revision: u32) -> Self {
         let mut header = TableHeader {
             signature: *b"VIOT",
-            length: 0.into(),
+            length: (Self::header_len() as u32).into(),
             revision: 1,
             checksum: 0,
             oem_id,
