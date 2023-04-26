@@ -7,9 +7,10 @@ extern crate alloc;
 
 use crate::{Aml, AmlSink};
 use alloc::vec::Vec;
+use zerocopy::AsBytes;
 
 #[repr(packed)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, AsBytes)]
 pub struct GenericAddress {
     pub address_space_id: u8,
     pub register_bit_width: u8,
