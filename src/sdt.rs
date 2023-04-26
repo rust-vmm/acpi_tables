@@ -90,7 +90,7 @@ impl Sdt {
         self.data.as_slice()
     }
 
-    pub fn append<T>(&mut self, value: T) {
+    pub fn append<T: AsBytes>(&mut self, value: T) {
         let orig_length = self.data.len();
         let new_length = orig_length + core::mem::size_of::<T>();
         self.data.resize(new_length, 0);
@@ -106,14 +106,16 @@ impl Sdt {
         self.update_checksum();
     }
 
-    /// Write a value at the given offset
-    pub fn write<T>(&mut self, offset: usize, value: T) {
-        assert!((offset + (core::mem::size_of::<T>() - 1)) < self.data.len());
-        // SAFETY: The assertion above makes sure we don't do out of bounds write.
-        unsafe {
-            *(((self.data.as_mut_ptr() as usize) + offset) as *mut T) = value;
-        }
+    /// Write a slice of data at a specific offset
+    pub fn write_bytes(&mut self, offset: usize, data: &[u8]) {
+        assert!(offset + data.len() <= self.data.len());
+        self.data.as_mut_slice()[offset..offset + data.len()].copy_from_slice(data);
         self.update_checksum();
+    }
+
+    /// Write a value at the given offset
+    pub fn write<T: AsBytes>(&mut self, offset: usize, value: T) {
+        self.write_bytes(offset, value.as_bytes())
     }
 
     pub fn write_u8(&mut self, offset: usize, val: u8) {
