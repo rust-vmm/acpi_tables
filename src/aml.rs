@@ -594,26 +594,35 @@ pub struct AddressSpace<T> {
     min: T,
     max: T,
     type_flags: u8,
+    translation: Option<T>,
 }
 
-impl<T> AddressSpace<T> {
+impl<T: Default> AddressSpace<T> {
     /// Create DWordMemory/QWordMemory object
-    pub fn new_memory(cacheable: AddressSpaceCachable, read_write: bool, min: T, max: T) -> Self {
+    pub fn new_memory(
+        cacheable: AddressSpaceCachable,
+        read_write: bool,
+        min: T,
+        max: T,
+        translation: Option<T>,
+    ) -> Self {
         AddressSpace {
             type_: AddressSpaceType::Memory,
             min,
             max,
             type_flags: (cacheable as u8) << 1 | read_write as u8,
+            translation,
         }
     }
 
     /// Create WordIO/DWordIO/QWordIO object
-    pub fn new_io(min: T, max: T) -> Self {
+    pub fn new_io(min: T, max: T, translation: Option<T>) -> Self {
         AddressSpace {
             type_: AddressSpaceType::IO,
             min,
             max,
             type_flags: 3, /* EntireRange */
+            translation,
         }
     }
 
@@ -624,6 +633,7 @@ impl<T> AddressSpace<T> {
             min,
             max,
             type_flags: 0,
+            translation: None,
         }
     }
 
@@ -650,7 +660,7 @@ impl Aml for AddressSpace<u16> {
         sink.word(0); /* Granularity */
         sink.word(self.min); /* Min */
         sink.word(self.max); /* Max */
-        sink.word(0); /* Translation */
+        sink.word(self.translation.unwrap_or(0));
         let len = self.max - self.min + 1;
         sink.word(len); /* Length */
     }
@@ -667,7 +677,7 @@ impl Aml for AddressSpace<u32> {
         sink.dword(0); /* Granularity */
         sink.dword(self.min); /* Min */
         sink.dword(self.max); /* Max */
-        sink.dword(0); /* Translation */
+        sink.dword(self.translation.unwrap_or(0)); /* Translation */
         let len = self.max - self.min + 1;
         sink.dword(len); /* Length */
     }
@@ -684,7 +694,7 @@ impl Aml for AddressSpace<u64> {
         sink.qword(0); /* Granularity */
         sink.qword(self.min); /* Min */
         sink.qword(self.max); /* Max */
-        sink.qword(0); /* Translation */
+        sink.qword(self.translation.unwrap_or(0)); /* Translation */
         let len = self.max - self.min + 1;
         sink.qword(len); /* Length */
     }
@@ -1848,8 +1858,8 @@ mod tests {
         Name::new(
             "_CRS".into(),
             &ResourceTemplate::new(vec![
-                &AddressSpace::new_io(0x0u16, 0xcf7u16),
-                &AddressSpace::new_io(0xd00u16, 0xffffu16),
+                &AddressSpace::new_io(0x0u16, 0xcf7u16, None),
+                &AddressSpace::new_io(0xd00u16, 0xffffu16, None),
             ]),
         )
         .to_aml_bytes(&mut aml);
@@ -1873,12 +1883,14 @@ mod tests {
                     true,
                     0xa_0000u32,
                     0xb_ffffu32,
+                    None,
                 ),
                 &AddressSpace::new_memory(
                     AddressSpaceCachable::NotCacheable,
                     true,
                     0xc000_0000u32,
                     0xfebf_ffffu32,
+                    None,
                 ),
             ]),
         )
@@ -1901,6 +1913,7 @@ mod tests {
                 true,
                 0x8_0000_0000u64,
                 0xf_ffff_ffffu64,
+                None,
             )]),
         )
         .to_aml_bytes(&mut aml);
@@ -2522,6 +2535,7 @@ mod tests {
                         true,
                         0x0000_0000_0000_0000u64,
                         0xFFFF_FFFF_FFFF_FFFEu64,
+                        None,
                     )]),
                 ),
                 &CreateField::new(&Path::new("MIN_"), &Path::new("MR64"), &14u64, &64usize),
