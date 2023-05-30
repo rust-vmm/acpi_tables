@@ -166,30 +166,6 @@ pub fn u8sum(aml: &dyn Aml) -> u8 {
     cksum.raw_value()
 }
 
-#[cfg(test)]
-mod lib_tests {
-    use super::*;
-
-    #[test]
-    fn test_checksum() {
-        let mut c = Checksum::default();
-        assert!(c.value() == 0);
-        c.add(1);
-        assert!(c.value() == 255);
-        c.add(1);
-        assert!(c.value() == 254);
-        c.add(255);
-        c.add(1);
-        assert!(c.value() == 254);
-        c.append(&[255]);
-        assert!(c.value() == 255);
-        c.append(&[128, 128]);
-        assert!(c.value() == 255);
-        c.add(1);
-        assert!(c.value() == 254);
-    }
-}
-
 /// Generate an 8-bit checksum over a byte slice.
 fn generate_checksum(data: &[u8]) -> u8 {
     (255 - data.iter().fold(0u8, |acc, x| acc.wrapping_add(*x))).wrapping_add(1)
@@ -225,4 +201,28 @@ macro_rules! mutable_setter {
             self
         }
     };
+}
+
+#[cfg(test)]
+mod lib_tests {
+    use super::*;
+
+    #[test]
+    fn test_checksum() {
+        let mut c = Checksum::default();
+        assert!(c.value() == 0);
+        c.add(1);
+        assert!(c.value() == 255);
+        c.add(1);
+        assert!(c.value() == 254);
+        c.add(255);
+        c.add(1);
+        assert!(c.value() == 254);
+        c.append(&[255]);
+        assert!(c.value() == 255);
+        c.append(&[128, 128]);
+        assert!(c.value() == 255);
+        c.add(1);
+        assert!(c.value() == 254);
+    }
 }
