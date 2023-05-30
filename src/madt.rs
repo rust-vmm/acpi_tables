@@ -26,6 +26,7 @@ enum MadtStructureType {
     RiscvIntc = 0x18,
     RiscvImsic = 0x19,
     RiscvAplic = 0x1a,
+    RiscvPlic = 0x1b,
 }
 
 #[repr(C, packed)]
@@ -596,6 +597,55 @@ impl APLIC {
 assert_same_size!(APLIC, [u8; 36]);
 aml_as_bytes!(APLIC);
 
+#[repr(C, packed)]
+#[derive(Copy, Clone, Debug, AsBytes)]
+pub struct PLIC {
+    r#type: u8,
+    length: u8,
+    version: u8,
+    plic_id: u8,
+    hardware_id: [u8; 8],
+    total_external_interrupt_sources: U16,
+    max_priority: U16,
+    flags: U32,
+    plic_size: U32,
+    plic_address: U64,
+    global_system_interrupt_base: U32,
+}
+
+impl PLIC {
+    pub fn new(
+        plic_id: u8,
+        hardware_id: [u8; 8],
+        total_external_interrupt_sources: u16,
+        max_priority: u16,
+        plic_size: u32,
+        plic_address: u64,
+        global_system_interrupt_base: u32,
+    ) -> Self {
+        Self {
+            r#type: MadtStructureType::RiscvPlic as u8,
+            length: Self::len() as u8,
+            version: 1,
+            plic_id,
+            hardware_id,
+            flags: 0.into(),
+            total_external_interrupt_sources: total_external_interrupt_sources.into(),
+            max_priority: max_priority.into(),
+            plic_size: plic_size.into(),
+            plic_address: plic_address.into(),
+            global_system_interrupt_base: global_system_interrupt_base.into(),
+        }
+    }
+
+    pub fn len() -> usize {
+        core::mem::size_of::<Self>()
+    }
+}
+
+assert_same_size!(PLIC, [u8; 36]);
+aml_as_bytes!(PLIC);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -779,6 +829,34 @@ mod tests {
             madt.add_structure(aplic);
             check_checksum(&madt);
             assert_eq!(Header::len() + APLIC::len() * (i + 1), get_size(&madt));
+        }
+    }
+
+    #[test]
+    fn test_plic() {
+        let mut madt = MADT::new(
+            *b"FOOBAR",
+            *b"DECAFCOF",
+            0xdead_beef,
+            LocalInterruptController::Riscv,
+        );
+        check_checksum(&madt);
+        assert_eq!(Header::len(), get_size(&madt));
+
+        for i in 0..2 {
+            let plic = PLIC::new(
+                0,                                       /* plic_id */
+                [b'A', b'B', b'C', b'D', b'E', 0, 0, 0], /* hardware_id */
+                545,                                     /* total_external_interrupt_sources */
+                64,                                      /* max priority */
+                0x8000_0000,                             /* global_system_interrupt_base */
+                0x4000,                                  /* plic_size */
+                0x1000_0000,                             /* plic_address */
+            );
+
+            madt.add_structure(plic);
+            check_checksum(&madt);
+            assert_eq!(Header::len() + PLIC::len() * (i + 1), get_size(&madt));
         }
     }
 }
