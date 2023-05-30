@@ -290,6 +290,54 @@ impl<'a> Package<'a> {
     }
 }
 
+/// Package object, but can be built dynamically
+pub struct PackageBuilder {
+    data: Vec<u8>,
+    elements: usize,
+}
+
+impl Aml for PackageBuilder {
+    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
+        sink.byte(PACKAGEOP);
+
+        let mut pkg_length = create_pkg_length(self.data.len(), true);
+        pkg_length.reverse();
+        for byte in pkg_length {
+            sink.byte(byte);
+        }
+
+        sink.byte(self.elements as u8);
+        sink.vec(&self.data);
+    }
+}
+
+impl AmlSink for PackageBuilder {
+    fn byte(&mut self, byte: u8) {
+        self.data.push(byte);
+    }
+}
+
+impl PackageBuilder {
+    /// Create new PackageBuilder
+    pub fn new() -> Self {
+        Self {
+            data: Vec::new(),
+            elements: 0,
+        }
+    }
+
+    pub fn add_element(&mut self, aml: &dyn Aml) {
+        aml.to_aml_bytes(self);
+        self.elements += 1;
+    }
+}
+
+impl Default for PackageBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Variable Package Term
 pub struct VarPackageTerm<'a> {
     data: &'a dyn Aml,
