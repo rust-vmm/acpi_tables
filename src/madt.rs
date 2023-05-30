@@ -553,21 +553,21 @@ pub struct APLIC {
     r#type: u8,
     length: u8,
     version: u8,
-    _reserved: u8,
-    aplic_id: U32,
+    aplic_id: u8,
+    flags: U32,
     hardware_id: [u8; 8],
-    number_of_idcs: U32,
+    number_of_idcs: U16,
+    total_external_interrupt_sources: U16,
     global_system_interrupt_base: U32,
     aplic_address: U64,
     aplic_size: U32,
-    total_external_interrupt_sources: U16,
 }
 
 impl APLIC {
     pub fn new(
-        aplic_id: u32,
+        aplic_id: u8,
         hardware_id: [u8; 8],
-        number_of_idcs: u32,
+        number_of_idcs: u16,
         global_system_interrupt_base: u32,
         aplic_address: u64,
         aplic_size: u32,
@@ -577,8 +577,8 @@ impl APLIC {
             r#type: MadtStructureType::RiscvAplic as u8,
             length: Self::len() as u8,
             version: 1,
-            _reserved: 0,
-            aplic_id: aplic_id.into(),
+            flags: 0.into(),
+            aplic_id,
             hardware_id,
             number_of_idcs: number_of_idcs.into(),
             global_system_interrupt_base: global_system_interrupt_base.into(),
@@ -593,7 +593,7 @@ impl APLIC {
     }
 }
 
-assert_same_size!(APLIC, [u8; 38]);
+assert_same_size!(APLIC, [u8; 36]);
 aml_as_bytes!(APLIC);
 
 #[cfg(test)]
