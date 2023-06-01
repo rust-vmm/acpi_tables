@@ -6,7 +6,7 @@
 extern crate alloc;
 
 use crate::{u8sum, Aml, AmlSink, Checksum, TableHeader};
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, vec, vec::Vec};
 use zerocopy::{byteorder, byteorder::LE, AsBytes};
 
 type U32 = byteorder::U32<LE>;
@@ -37,6 +37,9 @@ pub struct RHCT {
 
 #[derive(Debug)]
 pub struct IsaStringHandle(u32);
+
+#[derive(Debug)]
+pub struct CmoHandle(u32);
 
 impl RHCT {
     pub fn new(
@@ -105,9 +108,19 @@ impl RHCT {
         IsaStringHandle(old_offset)
     }
 
+    pub fn add_cmo(&mut self, cmo: CmoNode) -> CmoHandle {
+        let old_offset = self.handle_offset;
+
+        self.handle_offset += CmoNode::len() as u32;
+        self.update_header(cmo.u8sum(), CmoNode::len() as u32);
+        self.structures.push(Box::new(cmo));
+
+        CmoHandle(old_offset)
+    }
+
     pub fn add_hart_info(&mut self, hi: HartInfoNode) {
-        self.handle_offset += HartInfoNode::len() as u32;
-        self.update_header(hi.u8sum(), HartInfoNode::len() as u32);
+        self.handle_offset += hi.len() as u32;
+        self.update_header(hi.u8sum(), hi.len() as u32);
         self.structures.push(Box::new(hi));
     }
 }
@@ -128,6 +141,7 @@ impl Aml for RHCT {
 #[derive(Clone, Copy)]
 enum RhctNodeType {
     IsaString = 0,
+    Cmo = 1,
     HartInfo = 65535,
 }
 
@@ -188,7 +202,7 @@ impl Aml for IsaStringNode {
 // hart), and they all point to the same (single) IsaNodeString node.
 pub struct HartInfoNode {
     processor_uid: u32,
-    handle: u32,
+    handles: Vec<u32>,
 }
 
 impl HartInfoNode {
@@ -197,14 +211,17 @@ impl HartInfoNode {
     pub fn new(processor_uid: u32, handle: &IsaStringHandle) -> Self {
         Self {
             processor_uid,
-            handle: handle.0,
+            handles: vec![handle.0],
         }
     }
 
-    // NOTE: assumes 1 handle for now, general
-    // formula is 12 + 4 * N
-    fn len() -> usize {
-        12 + 4
+    pub fn with_cmo(mut self, cmo: &CmoHandle) -> Self {
+        self.handles.push(cmo.0);
+        self
+    }
+
+    fn len(&self) -> usize {
+        12 + 4 * self.handles.len()
     }
 
     fn u8sum(&self) -> u8 {
@@ -217,11 +234,54 @@ impl Aml for HartInfoNode {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let ty = RhctNodeType::HartInfo as u16;
         sink.word(ty);
-        sink.word(Self::len() as u16);
+        sink.word(self.len() as u16);
         sink.word(Self::REVISION);
-        sink.word(1); // only 1 handle for now
+        sink.word(self.handles.len() as u16);
         sink.dword(self.processor_uid);
-        sink.dword(self.handle);
+        for handle in &self.handles {
+            sink.dword(*handle);
+        }
+    }
+}
+
+pub struct CmoNode {
+    cbom_block_size: u8,
+    cbop_block_size: u8,
+    cboz_block_size: u8,
+}
+
+impl CmoNode {
+    pub fn new(
+        cbom_block_size_pow2: u8,
+        cbop_block_size_pow2: u8,
+        cboz_block_size_pow2: u8,
+    ) -> Self {
+        Self {
+            cbom_block_size: cbom_block_size_pow2,
+            cbop_block_size: cbop_block_size_pow2,
+            cboz_block_size: cboz_block_size_pow2,
+        }
+    }
+
+    fn len() -> usize {
+        10
+    }
+
+    fn u8sum(&self) -> u8 {
+        u8sum(self)
+    }
+}
+
+impl Aml for CmoNode {
+    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
+        let ty = RhctNodeType::Cmo as u16;
+        sink.word(ty);
+        sink.word(Self::len() as u16);
+        sink.word(1); // revision
+        sink.byte(0); // reserved
+        sink.byte(self.cbom_block_size);
+        sink.byte(self.cbop_block_size);
+        sink.byte(self.cboz_block_size);
     }
 }
 
