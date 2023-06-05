@@ -6,7 +6,7 @@
 
 extern crate alloc;
 
-use crate::{Aml, AmlSink};
+use crate::{gas, Aml, AmlSink};
 use alloc::string::String;
 use alloc::{vec, vec::Vec};
 
@@ -78,6 +78,7 @@ const ONESOP: u8 = 0xff;
 // AML resouce data fields
 const IOPORTDESC: u8 = 0x47;
 const ENDTAG: u8 = 0x79;
+const REGDESC: u8 = 0x82;
 const MEMORY32FIXEDDESC: u8 = 0x86;
 const DWORDADDRSPACEDESC: u8 = 0x87;
 const WORDADDRSPACEDESC: u8 = 0x88;
@@ -769,6 +770,25 @@ impl Aml for Interrupt {
         sink.byte(flags);
         sink.byte(1); /* count */
         sink.dword(self.number);
+    }
+}
+
+/// Register resource object
+pub struct Register {
+    reg: gas::GAS,
+}
+
+impl Register {
+    pub fn new(reg: gas::GAS) -> Self {
+        Self { reg }
+    }
+}
+
+impl Aml for Register {
+    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
+        sink.byte(REGDESC); /* Register Descriptor */
+        sink.word(0x12); // length
+        self.reg.to_aml_bytes(sink);
     }
 }
 
