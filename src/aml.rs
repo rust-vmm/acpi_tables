@@ -578,14 +578,17 @@ enum AddressSpaceType {
     BusNumber,
 }
 
-/// AddressSpaceCachable represent cache types for AddressSpace object
+/// AddressSpaceCacheable represent cache types for AddressSpace object
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum AddressSpaceCachable {
+pub enum AddressSpaceCacheable {
     NotCacheable,
     Cacheable,
     WriteCombining,
     PreFetchable,
 }
+
+#[deprecated = "Spelling error - use AddressSpaceCacheable"]
+pub type AddressSpaceCachable = AddressSpaceCacheable;
 
 /// AddressSpace structure with type, resouce range and flags to
 /// construct Memory/IO/BusNumber objects
@@ -600,7 +603,7 @@ pub struct AddressSpace<T> {
 impl<T: Default> AddressSpace<T> {
     /// Create DWordMemory/QWordMemory object
     pub fn new_memory(
-        cacheable: AddressSpaceCachable,
+        cacheable: AddressSpaceCacheable,
         read_write: bool,
         min: T,
         max: T,
@@ -1879,14 +1882,14 @@ mod tests {
             "_CRS".into(),
             &ResourceTemplate::new(vec![
                 &AddressSpace::new_memory(
-                    AddressSpaceCachable::Cacheable,
+                    AddressSpaceCacheable::Cacheable,
                     true,
                     0xa_0000u32,
                     0xb_ffffu32,
                     None,
                 ),
                 &AddressSpace::new_memory(
-                    AddressSpaceCachable::NotCacheable,
+                    AddressSpaceCacheable::NotCacheable,
                     true,
                     0xc000_0000u32,
                     0xfebf_ffffu32,
@@ -1909,7 +1912,7 @@ mod tests {
         Name::new(
             "_CRS".into(),
             &ResourceTemplate::new(vec![&AddressSpace::new_memory(
-                AddressSpaceCachable::Cacheable,
+                AddressSpaceCacheable::Cacheable,
                 true,
                 0x8_0000_0000u64,
                 0xf_ffff_ffffu64,
@@ -2531,7 +2534,7 @@ mod tests {
                 &Name::new(
                     "MR64".into(),
                     &ResourceTemplate::new(vec![&AddressSpace::new_memory(
-                        AddressSpaceCachable::Cacheable,
+                        AddressSpaceCacheable::Cacheable,
                         true,
                         0x0000_0000_0000_0000u64,
                         0xFFFF_FFFF_FFFF_FFFEu64,
