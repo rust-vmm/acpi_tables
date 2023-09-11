@@ -108,6 +108,14 @@ impl RHCT {
         IsaStringHandle(old_offset)
     }
 
+    pub fn add_mmu_node(&mut self, scheme: VirtualAddressScheme) {
+        let node = MmuNode::new(scheme);
+
+        self.handle_offset += MmuNode::len() as u32;
+        self.update_header(node.u8sum(), MmuNode::len() as u32);
+        self.structures.push(Box::new(node));
+    }
+
     pub fn add_cmo(&mut self, cmo: CmoNode) -> CmoHandle {
         let old_offset = self.handle_offset;
 
@@ -142,6 +150,7 @@ impl Aml for RHCT {
 enum RhctNodeType {
     IsaString = 0,
     Cmo = 1,
+    Mmu = 2,
     HartInfo = 65535,
 }
 
@@ -285,6 +294,44 @@ impl Aml for CmoNode {
     }
 }
 
+#[repr(u8)]
+pub enum VirtualAddressScheme {
+    Sv39 = 0,
+    Sv48 = 1,
+    Sv57 = 2,
+}
+
+pub struct MmuNode {
+    supported_type: u8,
+}
+
+impl MmuNode {
+    pub fn new(scheme: VirtualAddressScheme) -> Self {
+        Self {
+            supported_type: scheme as u8,
+        }
+    }
+
+    fn len() -> usize {
+        8
+    }
+
+    fn u8sum(&self) -> u8 {
+        u8sum(self)
+    }
+}
+
+impl Aml for MmuNode {
+    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
+        let ty = RhctNodeType::Mmu as u16;
+        sink.word(ty);
+        sink.word(Self::len() as u16);
+        sink.word(1); // revision
+        sink.byte(0); // reserved
+        sink.byte(self.supported_type);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -320,6 +367,22 @@ mod tests {
         let _ = rhct.add_isa_string("quux");
 
         rhct.to_aml_bytes(&mut bytes);
+        let sum = bytes.iter().fold(0u8, |acc, x| acc.wrapping_add(*x));
+        assert_eq!(sum, 0);
+    }
+
+    #[test]
+    fn test_mmu() {
+        let mut bytes = Vec::new();
+        let mut rhct = RHCT::new(*b"RIVOS_", *b"RIVOS___", 42u32, 0x1111_2222_3333_4444);
+
+        rhct.add_mmu_node(VirtualAddressScheme::Sv57);
+
+        rhct.to_aml_bytes(&mut bytes);
+        assert_eq!(
+            bytes[core::mem::size_of::<Header>() + MmuNode::len() - 1],
+            VirtualAddressScheme::Sv57 as u8
+        );
         let sum = bytes.iter().fold(0u8, |acc, x| acc.wrapping_add(*x));
         assert_eq!(sum, 0);
     }
