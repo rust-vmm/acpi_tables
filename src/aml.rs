@@ -298,14 +298,10 @@ pub struct PackageBuilder {
 
 impl Aml for PackageBuilder {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
+        let pkg_length = create_pkg_length(self.data.len() + 1, true);
+
         sink.byte(PACKAGEOP);
-
-        let mut pkg_length = create_pkg_length(self.data.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            sink.byte(byte);
-        }
-
+        sink.vec(&pkg_length);
         sink.byte(self.elements as u8);
         sink.vec(&self.data);
     }
@@ -2548,5 +2544,111 @@ mod tests {
         )
         .to_aml_bytes(&mut aml);
         assert_eq!(aml, data);
+    }
+
+    #[test]
+    fn test_packagebuilder() {
+        let expected = vec![0x12, 0x04, 0x01, 0x0A, 0x05];
+        {
+            let mut aml = Vec::new();
+
+            // Ensure Package and PackageBuilder produce the same output for a single element
+            Package::new(vec![&5u8]).to_aml_bytes(&mut aml);
+            assert_eq!(expected, aml);
+        }
+        {
+            let mut aml = Vec::new();
+            let mut builder = PackageBuilder::new();
+            builder.add_element(&5u8);
+            builder.to_aml_bytes(&mut aml);
+            assert_eq!(expected, aml);
+        }
+    }
+
+    #[test]
+    fn test_packagebuilder_multiple() {
+        let expected = vec![
+            0x12, 0x47, 0x9, 0x8, 0x12, 0x10, 0x4, 0xb, 0xff, 0xff, 0x0, 0x2e, 0x5f, 0x53, 0x42,
+            0x5f, 0x47, 0x53, 0x49, 0x30, 0x0, 0x12, 0x10, 0x4, 0xb, 0xff, 0xff, 0x1, 0x2e, 0x5f,
+            0x53, 0x42, 0x5f, 0x47, 0x53, 0x49, 0x31, 0x0, 0x12, 0x11, 0x4, 0xb, 0xff, 0xff, 0xa,
+            0x2, 0x2e, 0x5f, 0x53, 0x42, 0x5f, 0x47, 0x53, 0x49, 0x32, 0x0, 0x12, 0x11, 0x4, 0xb,
+            0xff, 0xff, 0xa, 0x3, 0x2e, 0x5f, 0x53, 0x42, 0x5f, 0x47, 0x53, 0x49, 0x33, 0x0, 0x12,
+            0x12, 0x4, 0xc, 0xff, 0xff, 0x1, 0x0, 0x0, 0x2e, 0x5f, 0x53, 0x42, 0x5f, 0x47, 0x53,
+            0x49, 0x31, 0x0, 0x12, 0x12, 0x4, 0xc, 0xff, 0xff, 0x1, 0x0, 0x1, 0x2e, 0x5f, 0x53,
+            0x42, 0x5f, 0x47, 0x53, 0x49, 0x32, 0x0, 0x12, 0x13, 0x4, 0xc, 0xff, 0xff, 0x1, 0x0,
+            0xa, 0x2, 0x2e, 0x5f, 0x53, 0x42, 0x5f, 0x47, 0x53, 0x49, 0x33, 0x0, 0x12, 0x13, 0x4,
+            0xc, 0xff, 0xff, 0x1, 0x0, 0xa, 0x3, 0x2e, 0x5f, 0x53, 0x42, 0x5f, 0x47, 0x53, 0x49,
+            0x30, 0x0,
+        ];
+        {
+            let mut aml = Vec::new();
+            Package::new(vec![
+                &Package::new(vec![&0xffffu32, &0u32, &Path::new("_SB_.GSI0"), &0u32]),
+                &Package::new(vec![&0xffffu32, &1u32, &Path::new("_SB_.GSI1"), &0u32]),
+                &Package::new(vec![&0xffffu32, &2u32, &Path::new("_SB_.GSI2"), &0u32]),
+                &Package::new(vec![&0xffffu32, &3u32, &Path::new("_SB_.GSI3"), &0u32]),
+                &Package::new(vec![&0x1ffffu32, &0u32, &Path::new("_SB_.GSI1"), &0u32]),
+                &Package::new(vec![&0x1ffffu32, &1u32, &Path::new("_SB_.GSI2"), &0u32]),
+                &Package::new(vec![&0x1ffffu32, &2u32, &Path::new("_SB_.GSI3"), &0u32]),
+                &Package::new(vec![&0x1ffffu32, &3u32, &Path::new("_SB_.GSI0"), &0u32]),
+            ])
+            .to_aml_bytes(&mut aml);
+            assert_eq!(expected, aml);
+        }
+
+        {
+            let mut aml = Vec::new();
+            let mut builder = PackageBuilder::new();
+            builder.add_element(&Package::new(vec![
+                &0xffffu32,
+                &0u32,
+                &Path::new("_SB_.GSI0"),
+                &0u32,
+            ]));
+            builder.add_element(&Package::new(vec![
+                &0xffffu32,
+                &1u32,
+                &Path::new("_SB_.GSI1"),
+                &0u32,
+            ]));
+            builder.add_element(&Package::new(vec![
+                &0xffffu32,
+                &2u32,
+                &Path::new("_SB_.GSI2"),
+                &0u32,
+            ]));
+            builder.add_element(&Package::new(vec![
+                &0xffffu32,
+                &3u32,
+                &Path::new("_SB_.GSI3"),
+                &0u32,
+            ]));
+            builder.add_element(&Package::new(vec![
+                &0x1ffffu32,
+                &0u32,
+                &Path::new("_SB_.GSI1"),
+                &0u32,
+            ]));
+            builder.add_element(&Package::new(vec![
+                &0x1ffffu32,
+                &1u32,
+                &Path::new("_SB_.GSI2"),
+                &0u32,
+            ]));
+            builder.add_element(&Package::new(vec![
+                &0x1ffffu32,
+                &2u32,
+                &Path::new("_SB_.GSI3"),
+                &0u32,
+            ]));
+            builder.add_element(&Package::new(vec![
+                &0x1ffffu32,
+                &3u32,
+                &Path::new("_SB_.GSI0"),
+                &0u32,
+            ]));
+            builder.to_aml_bytes(&mut aml);
+            assert_eq!(expected, aml);
+        }
     }
 }
