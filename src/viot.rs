@@ -103,10 +103,7 @@ impl VIOT {
 /// past (e.g. IORT for ARM, DMAR for Intel, IVRS for AMD, etc.).
 impl Aml for VIOT {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.header.as_bytes() {
-            sink.byte(*byte);
-        }
-
+        sink.vec(self.header.as_bytes());
         sink.word(self.nodes.len() as u16);
         sink.word(NODE_OFFSET);
         sink.qword(0); // reserved
@@ -192,8 +189,8 @@ impl Aml for PciRange {
         sink.byte(0); // reserved
         sink.word(Self::len() as u16);
         sink.dword(self.first.as_endpoint());
-        sink.word(self.first.as_segment());
-        sink.word(self.last.as_segment());
+        sink.word(self.first.segment);
+        sink.word(self.last.segment);
         sink.word(self.first.as_bdf());
         sink.word(self.last.as_bdf());
         sink.word(self.translation_offset);
@@ -266,7 +263,8 @@ impl Aml for VirtIoPciIommu {
         sink.byte(ViotEntryType::VirtIoPciIommu as u8);
         sink.byte(0); // reserved
         sink.word(Self::len() as u16);
-        sink.dword(self.device.as_endpoint());
+        sink.word(self.device.segment);
+        sink.word(self.device.as_bdf());
         sink.qword(0); // reserved
     }
 }
