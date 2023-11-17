@@ -26,6 +26,7 @@ pub mod rqsc;
 pub mod rsdp;
 pub mod sdt;
 pub mod slit;
+pub mod spcr;
 pub mod srat;
 pub mod tpm2;
 pub mod viot;
