@@ -8,10 +8,11 @@ use zerocopy::{byteorder, byteorder::LE, AsBytes};
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
-use crate::{aml_as_bytes, gas::GAS, mutable_setter, Aml, AmlSink, Checksum, TableHeader};
+use crate::{aml_as_bytes, gas, gas::GAS, mutable_setter, Aml, AmlSink, Checksum, TableHeader};
 
 type U16 = byteorder::U16<LE>;
 type U32 = byteorder::U32<LE>;
+type U64 = byteorder::U64<LE>;
 
 #[repr(u16)]
 enum HestStructureType {
@@ -19,6 +20,7 @@ enum HestStructureType {
     PcieAerDevice = 7,
     PcieAerBridge = 8,
     GenericHardware = 9,
+    GenericHardwareV2 = 10,
 }
 
 pub struct HEST {
@@ -316,7 +318,7 @@ aml_as_bytes!(PcieAerBridge);
 /// this structure.  It either uses a non-standard notification
 /// mechanism or uses a non-standard format for error reporting.
 /// Because of the non-standard interface, OSPM does not have support
-/// for configure and control operaetions, therefore the error source
+/// for configure and control operations, therefore the error source
 /// must be configured by firmware during boot.
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, Default, AsBytes)]
@@ -533,6 +535,53 @@ impl Aml for GenericErrorData {
     }
 }
 
+/// This is an extension to the Generic Hardware Source structure above,
+/// for HW-reduced platforms that rely on "RAS controllers" to generate generic
+/// error records.
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default, AsBytes)]
+pub struct GenericHardwareSourceV2 {
+    r#type: U16,
+    source_id: U16,
+    related_source_id: U16,
+    _flags: u8, // reserved
+    enabled: u8,
+    num_records: U32,
+    max_sections: U32,
+    max_raw_length: U32,
+    error_status_address: GAS,
+    notification: NotificationStructure,
+    error_status_block_len: U32,
+    read_ack_register: gas::GAS,
+    read_ack_preserve: U64,
+    read_ack_write: U64,
+}
+
+impl GenericHardwareSourceV2 {
+    pub fn new(source_id: u16, enabled: EnabledStatus) -> Self {
+        Self {
+            r#type: (HestStructureType::GenericHardwareV2 as u16).into(),
+            source_id: source_id.into(),
+            related_source_id: 0xffff.into(),
+            _flags: 0,
+            enabled: enabled as u8,
+            ..Default::default()
+        }
+    }
+
+    mutable_setter!(num_records, u32);
+    mutable_setter!(max_sections, u32);
+    mutable_setter!(max_raw_length, u32);
+    mutable_setter!(error_status_address, GAS);
+    mutable_setter!(notification, NotificationStructure);
+    mutable_setter!(error_status_block_len, u32);
+    mutable_setter!(read_ack_register, gas::GAS);
+    mutable_setter!(read_ack_preserve, u64);
+    mutable_setter!(read_ack_write, u64);
+}
+
+aml_as_bytes!(GenericHardwareSourceV2);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -648,6 +697,51 @@ mod tests {
                         .error_threshold_window_ms(0xdef0_1234),
                 )
                 .error_status_block_len(0xdead_beef),
+        );
+
+        let mut bytes = Vec::new();
+        hest.to_aml_bytes(&mut bytes);
+        let sum = bytes.iter().fold(0u8, |acc, x| acc.wrapping_add(*x));
+        assert_eq!(sum, 0);
+        assert_eq!(bytes[0..4], *b"HEST");
+    }
+
+    #[test]
+    fn test_hest_generic_hardware_v2() {
+        let mut hest = HEST::new(*b"HESSTT", *b"SOMETHIN", 0xcafe_d00d);
+
+        hest.add_structure(
+            GenericHardwareSourceV2::new(0x1234, EnabledStatus::Enabled)
+                .num_records(0x0123_4567)
+                .max_sections(0x89ab_cdef)
+                .max_raw_length(0x0123_4567)
+                .error_status_address(GAS::new(
+                    AddressSpace::PciBarTarget,
+                    32,
+                    16,
+                    AccessSize::DwordAccess,
+                    0x89ab_cdef,
+                ))
+                .notification(
+                    NotificationStructure::new(NotificationType::Polled)
+                        .conf_write_en(0x1234)
+                        .poll_interval_ms(0x5678_90ab)
+                        .vector(0)
+                        .polling_threshold_value(0x5678_9abc)
+                        .polling_threshold_window_ms(0xdef0_1234)
+                        .error_threshold_value(0x5678_9abc)
+                        .error_threshold_window_ms(0xdef0_1234),
+                )
+                .error_status_block_len(0xdead_beef)
+                .read_ack_register(GAS::new(
+                    AddressSpace::SystemMemory,
+                    64,
+                    255,
+                    AccessSize::QwordAccess,
+                    0x1234_0123_4567,
+                ))
+                .read_ack_preserve(0x9876_4321_0123_4567)
+                .read_ack_write(0x9876_4321_0123_4567),
         );
 
         let mut bytes = Vec::new();
