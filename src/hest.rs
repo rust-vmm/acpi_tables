@@ -415,6 +415,10 @@ pub enum NotificationType {
     Armv8Sei = 9,
     ExternalGsiv = 10,
     SoftwareException = 11,
+    RiscvSupervisorSoftwareEvent = 12,
+    RiscvLowPriorityRasInterrupt = 13,
+    RiscvHighPriorityRasInterrupt = 14,
+    RiscvHardwareErrorException = 15,
 }
 
 #[repr(u32)]
