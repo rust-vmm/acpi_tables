@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::AsBytes;
+use zerocopy::{byteorder, byteorder::LE, AsBytes};
 
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
-use crate::{u8sum, Aml, AmlSink, Checksum, TableHeader};
+use crate::{aml_as_bytes, u8sum, Aml, AmlSink, Checksum, TableHeader};
+
+type U16 = byteorder::U16<LE>;
+type U32 = byteorder::U32<LE>;
 
 // SRAT is the place where proximity domains are defined, and _PXM
 // (found in DSDT and/or SSDT) provides a mechanism to associate a
@@ -69,6 +72,11 @@ impl SRAT {
         self.update_header(GenericInitiator::len() as u32, st.u8sum());
         self.structures.push(Box::new(st));
     }
+
+    pub fn add_rintc_affinity(&mut self, ra: RintcAffinity) {
+        self.update_header(RintcAffinity::len() as u32, ra.u8sum());
+        self.structures.push(Box::new(ra));
+    }
 }
 
 impl Aml for SRAT {
@@ -90,6 +98,7 @@ impl Aml for SRAT {
 enum SratStructureType {
     MemoryAffinity = 1,
     GenericInitiator = 5,
+    RintcAffinity = 7,
 }
 
 #[repr(u32)]
@@ -280,6 +289,47 @@ impl Aml for GenericInitiator {
     }
 }
 
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default, AsBytes)]
+pub struct RintcAffinity {
+    r#type: u8,
+    length: u8,
+    reserved: U16,
+    acpi_processor_uid: [u8; 4],
+    flags: U32,
+    clock_domain: U32,
+}
+
+impl RintcAffinity {
+    const FLAGS_ENABLED: u32 = 1 << 0;
+
+    fn len() -> usize {
+        core::mem::size_of::<Self>()
+    }
+
+    pub fn new(acpi_processor_uid: [u8; 4], clock_domain: u32) -> Self {
+        Self {
+            r#type: SratStructureType::RintcAffinity as u8,
+            length: 20,
+            reserved: 0.into(),
+            acpi_processor_uid,
+            flags: 0.into(),
+            clock_domain: clock_domain.into(),
+        }
+    }
+
+    pub fn enabled(mut self) -> Self {
+        self.flags = (self.flags.get() | Self::FLAGS_ENABLED).into();
+        self
+    }
+
+    fn u8sum(&self) -> u8 {
+        u8sum(self)
+    }
+}
+
+aml_as_bytes!(RintcAffinity);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -338,6 +388,17 @@ mod tests {
             )
             .enabled(),
         );
+
+        let mut bytes = Vec::new();
+        srat.to_aml_bytes(&mut bytes);
+        let sum = bytes.iter().fold(0u8, |acc, x| acc.wrapping_add(*x));
+        assert_eq!(sum, 0);
+    }
+
+    #[test]
+    fn test_rintc_affinity() {
+        let mut srat = SRAT::new(*b"FOOBAR", *b"SRATSRAT", 0xdead_beef);
+        srat.add_rintc_affinity(RintcAffinity::new([0x42, 0x37, 0x58, 0xde], 0xde583742).enabled());
 
         let mut bytes = Vec::new();
         srat.to_aml_bytes(&mut bytes);
