@@ -68,6 +68,25 @@ impl GAS {
             address: address.into(),
         }
     }
+
+    // NOTE: PCI Configuration space addresses must be confined to devices on
+    // PCI Segment Group 0, bus 0.
+    pub fn new_pci_config(
+        register_bit_width: u8,
+        access_size: AccessSize,
+        device: u8,
+        function: u8,
+        register: u16,
+    ) -> Self {
+        let address = ((device as u64) << 32 | (function as u64) << 16 | (register as u64)).into();
+        Self {
+            address_space_id: AddressSpace::PciConfigSpace,
+            register_bit_width,
+            register_bit_offset: 0,
+            access_size,
+            address,
+        }
+    }
 }
 
 crate::assert_same_size!(GAS, [u8; 12]);
