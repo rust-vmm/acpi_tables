@@ -148,14 +148,6 @@ impl PciDevice {
     fn as_bdf(&self) -> u16 {
         (self.bus as u16) << 8 | (self.device as u16) << 3 | self.function as u16
     }
-
-    fn as_segment(&self) -> u16 {
-        self.segment
-    }
-
-    fn as_endpoint(&self) -> u32 {
-        (self.as_segment() as u32) << 16 | self.as_bdf() as u32
-    }
 }
 
 /// This structure describes a range of PCI endpoints
@@ -188,7 +180,7 @@ impl Aml for PciRange {
         sink.byte(ViotEntryType::PciRange as u8);
         sink.byte(0); // reserved
         sink.word(Self::len() as u16);
-        sink.dword(self.first.as_endpoint());
+        sink.dword(self.first.as_bdf() as u32);
         sink.word(self.first.segment);
         sink.word(self.last.segment);
         sink.word(self.first.as_bdf());
