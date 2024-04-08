@@ -649,7 +649,6 @@ aml_as_bytes!(PLIC);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Aml;
 
     fn check_checksum(madt: &MADT) {
         let mut bytes = Vec::new();

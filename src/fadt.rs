@@ -247,6 +247,7 @@ impl FADTBuilder {
 mod test {
     use super::{FADTBuilder, Flags, PmProfile};
     use crate::Aml;
+    use alloc::vec::Vec;
 
     #[test]
     fn test_fadt() {

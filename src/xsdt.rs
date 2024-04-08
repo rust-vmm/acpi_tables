@@ -74,6 +74,7 @@ impl Aml for XSDT {
 mod tests {
     use super::XSDT;
     use crate::Aml;
+    use alloc::vec::Vec;
 
     #[test]
     fn test_xsdt() {

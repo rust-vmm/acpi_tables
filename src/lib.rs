@@ -5,7 +5,7 @@
 //
 
 #![crate_type = "staticlib"]
-#![cfg_attr(not(test), no_std)]
+#![no_std]
 
 //! ACPI table generation.
 

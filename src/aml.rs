@@ -1698,7 +1698,7 @@ impl<'a> Aml for PowerResource<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::vec;
+    use alloc::borrow::ToOwned;
 
     #[test]
     fn test_device() {
