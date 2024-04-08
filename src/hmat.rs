@@ -357,7 +357,6 @@ impl Aml for MemorySideCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Aml;
 
     fn check_checksum(hmat: &HMAT) {
         let mut bytes = Vec::new();

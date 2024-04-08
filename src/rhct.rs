@@ -335,7 +335,6 @@ impl Aml for MmuNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Aml;
 
     #[test]
     fn test_rhct() {

@@ -493,6 +493,7 @@ impl Aml for Platform {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
 
     fn rimt() -> RIMT {
         RIMT::new(*b"FOOBAR", *b"CAFEDEAD", 0xdead_beef)

@@ -63,6 +63,7 @@ aml_as_bytes!(BERT);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec::Vec;
 
     #[test]
     fn test_bert() {

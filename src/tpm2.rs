@@ -306,6 +306,7 @@ impl Aml for Tpm2 {
 mod tests {
     use super::*;
     use crate::gas;
+    use alloc::vec::Vec;
 
     #[test]
     fn test_client() {
