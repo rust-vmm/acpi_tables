@@ -191,7 +191,7 @@ pub type Word = u16;
 
 impl Aml for Word {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        if *self <= Byte::max_value().into() {
+        if *self <= Byte::MAX.into() {
             (*self as Byte).to_aml_bytes(sink);
         } else {
             sink.byte(WORDPREFIX);
@@ -204,7 +204,7 @@ pub type DWord = u32;
 
 impl Aml for DWord {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        if *self <= Word::max_value().into() {
+        if *self <= Word::MAX.into() {
             (*self as Word).to_aml_bytes(sink);
         } else {
             sink.byte(DWORDPREFIX);
@@ -217,7 +217,7 @@ pub type QWord = u64;
 
 impl Aml for QWord {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        if *self <= DWord::max_value().into() {
+        if *self <= DWord::MAX.into() {
             (*self as DWord).to_aml_bytes(sink);
         } else {
             sink.byte(QWORDPREFIX);
