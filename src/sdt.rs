@@ -20,12 +20,23 @@ pub struct GenericAddress {
 }
 
 impl GenericAddress {
+    fn access_size_of<T>() -> u8 {
+        // https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/05_ACPI_Software_Programming_Model/ACPI_Software_Programming_Model.html#generic-address-structure-gas
+        match core::mem::size_of::<T>() {
+            1 => 1,
+            2 => 2,
+            4 => 3,
+            8 => 4,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn io_port_address<T>(address: u16) -> Self {
         GenericAddress {
             address_space_id: 1,
             register_bit_width: 8 * core::mem::size_of::<T>() as u8,
             register_bit_offset: 0,
-            access_size: core::mem::size_of::<T>() as u8,
+            access_size: Self::access_size_of::<T>(),
             address: u64::from(address),
         }
     }
@@ -34,7 +45,7 @@ impl GenericAddress {
             address_space_id: 0,
             register_bit_width: 8 * core::mem::size_of::<T>() as u8,
             register_bit_offset: 0,
-            access_size: core::mem::size_of::<T>() as u8,
+            access_size: Self::access_size_of::<T>(),
             address,
         }
     }
@@ -151,7 +162,7 @@ impl Aml for Sdt {
 
 #[cfg(test)]
 mod tests {
-    use super::Sdt;
+    use super::{GenericAddress, Sdt};
 
     #[test]
     fn test_sdt() {
@@ -167,5 +178,17 @@ mod tests {
             .iter()
             .fold(0u8, |acc, x| acc.wrapping_add(*x));
         assert_eq!(sum, 0);
+    }
+
+    #[test]
+    fn test_generic_address_access_size() {
+        let byte_mmio = GenericAddress::mmio_address::<u8>(0x1000);
+        assert_eq!(byte_mmio.access_size, 1);
+        let word_mmio = GenericAddress::mmio_address::<u16>(0x1000);
+        assert_eq!(word_mmio.access_size, 2);
+        let dword_mmio = GenericAddress::mmio_address::<u32>(0x1000);
+        assert_eq!(dword_mmio.access_size, 3);
+        let qword_mmio = GenericAddress::mmio_address::<u64>(0x1000);
+        assert_eq!(qword_mmio.access_size, 4);
     }
 }
