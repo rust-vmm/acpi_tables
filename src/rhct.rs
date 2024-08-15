@@ -135,9 +135,7 @@ impl RHCT {
 
 impl Aml for RHCT {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.header.as_bytes() {
-            sink.byte(*byte);
-        }
+        sink.vec(self.header.as_bytes());
 
         for st in &self.structures {
             st.to_aml_bytes(sink);
@@ -190,9 +188,7 @@ impl Aml for IsaStringNode {
         sink.word(self.len() as u16);
         sink.word(Self::REVISION);
         sink.word(strlen);
-        for byte in self.string.bytes() {
-            sink.byte(byte);
-        }
+        sink.vec(self.string.as_bytes());
         sink.byte(0); // NULL terminator
         if padding_reqd {
             sink.byte(0);

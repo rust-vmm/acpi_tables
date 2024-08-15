@@ -192,9 +192,7 @@ crate::assert_same_size!(TpmServer1_2, [u8; 100]);
 
 impl Aml for TpmServer1_2 {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.as_bytes() {
-            sink.byte(*byte);
-        }
+        sink.vec(self.as_bytes());
     }
 }
 
@@ -290,9 +288,8 @@ impl Aml for Tpm2 {
         sink.word(0); // reserved
         sink.qword(self.crb_or_fifo_base);
         sink.dword(self.start_method as u32);
-        for byte in &self.start_method_params[0..self.start_method_param_len] {
-            sink.byte(*byte);
-        }
+        sink.vec(&self.start_method_params[0..self.start_method_param_len]);
+
         if let Some(laml) = self.log_area_min_len {
             sink.dword(laml);
         }

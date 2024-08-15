@@ -80,9 +80,7 @@ impl RQSC {
 
 impl Aml for RQSC {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.header.as_bytes() {
-            sink.byte(*byte);
-        }
+        sink.vec(self.header.as_bytes());
 
         sink.dword(self.structures.len() as u32);
         for st in &self.structures {

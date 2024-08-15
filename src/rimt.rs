@@ -99,9 +99,7 @@ impl RIMT {
 /// topology and the IOMMU.
 impl Aml for RIMT {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.header.as_bytes() {
-            sink.byte(*byte);
-        }
+        sink.vec(self.header.as_bytes());
 
         sink.dword(self.devices.len() as u32);
         sink.dword(Self::DEVICE_OFFSET);

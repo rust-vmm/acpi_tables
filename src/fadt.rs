@@ -147,9 +147,7 @@ impl FADT {
 
 impl Aml for FADT {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.table.as_bytes() {
-            sink.byte(*byte);
-        }
+        sink.vec(self.table.as_bytes());
     }
 }
 

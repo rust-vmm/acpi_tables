@@ -79,9 +79,7 @@ impl SLIT {
 
 impl Aml for SLIT {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.header.as_bytes() {
-            sink.byte(*byte);
-        }
+        sink.vec(self.header.as_bytes());
 
         sink.qword(self.localities as u64);
         for entry in &self.entries {
