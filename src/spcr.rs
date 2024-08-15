@@ -53,15 +53,9 @@ impl SPCR<'_> {
 
 impl Aml for SPCR<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.header.as_bytes() {
-            sink.byte(*byte);
-        }
-        for byte in self.info.as_bytes() {
-            sink.byte(*byte);
-        }
-        for byte in self.namespace_string {
-            sink.byte(*byte);
-        }
+        sink.vec(self.header.as_bytes());
+        sink.vec(self.info.as_bytes());
+        sink.vec(self.namespace_string);
     }
 }
 

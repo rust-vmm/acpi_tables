@@ -302,9 +302,7 @@ impl Aml for CxlFixedMemory {
         sink.word(self.window_restrictions);
         sink.word(self.qtg_id);
         for target in &self.interleave_targets {
-            for byte in target {
-                sink.byte(*byte);
-            }
+            sink.vec(target);
         }
     }
 }

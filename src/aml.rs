@@ -141,9 +141,7 @@ impl Aml for Path {
         };
 
         for part in self.name_parts.clone().iter_mut() {
-            for byte in part {
-                sink.byte(*byte);
-            }
+            sink.vec(part);
         }
     }
 }
@@ -233,9 +231,7 @@ pub struct Name {
 
 impl Aml for Name {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in &self.bytes {
-            sink.byte(*byte);
-        }
+        sink.vec(&self.bytes);
     }
 }
 
@@ -273,13 +269,10 @@ impl<'a> Aml for Package<'a> {
             child.to_aml_bytes(&mut bytes);
         }
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(PACKAGEOP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -311,6 +304,10 @@ impl Aml for PackageBuilder {
 impl AmlSink for PackageBuilder {
     fn byte(&mut self, byte: u8) {
         self.data.push(byte);
+    }
+
+    fn vec(&mut self, v: &[u8]) {
+        self.data.extend_from_slice(v);
     }
 }
 
@@ -345,13 +342,10 @@ impl<'a> Aml for VarPackageTerm<'a> {
         let mut bytes = Vec::new();
         self.data.to_aml_bytes(&mut bytes);
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(VARPACKAGEOP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -380,7 +374,7 @@ package length is 2**28."
 
 /* Also used for NamedField but in that case the length is not included in itself */
 fn create_pkg_length(len: usize, include_self: bool) -> Vec<u8> {
-    let mut result = Vec::new();
+    let mut result = Vec::with_capacity(4);
 
     /* PkgLength is inclusive and includes the length bytes */
     let length_length = if len < (2usize.pow(6) - 1) {
@@ -466,9 +460,7 @@ impl Aml for Usize {
 
 fn create_aml_string(v: &str, sink: &mut dyn AmlSink) {
     sink.byte(STRINGOP);
-    for byte in v.as_bytes() {
-        sink.byte(*byte);
-    }
+    sink.vec(v.as_bytes());
     sink.byte(0x0); /* NullChar */
 }
 
@@ -510,21 +502,15 @@ impl<'a> Aml for ResourceTemplate<'a> {
 
         // Buffer length is an encoded integer including buffer data
         // and EndTag and checksum byte
-        let mut buffer_length = Vec::new();
+        let mut buffer_length = Vec::with_capacity(4);
         bytes.len().to_aml_bytes(&mut buffer_length);
-        buffer_length.reverse();
-        for byte in buffer_length {
-            bytes.insert(0, byte);
-        }
 
         // PkgLength is everything else
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len() + buffer_length.len(), true);
 
         sink.byte(BUFFEROP);
+        sink.vec(&pkg_length);
+        sink.vec(&buffer_length);
         sink.vec(&bytes);
     }
 }
@@ -806,14 +792,11 @@ impl<'a> Aml for Device<'a> {
             child.to_aml_bytes(&mut bytes);
         }
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(EXTOPPREFIX); /* ExtOpPrefix */
         sink.byte(DEVICEOP); /* DeviceOp */
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -839,13 +822,10 @@ impl<'a> Aml for Scope<'a> {
             child.to_aml_bytes(&mut bytes);
         }
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(SCOPEOP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -859,14 +839,19 @@ impl<'a> Scope<'a> {
     /// Create raw bytes representing a Scope from its children in raw bytes
     pub fn raw(path: Path, mut children: Vec<u8>) -> Vec<u8> {
         let mut bytes = Vec::new();
+        bytes.push(SCOPEOP);
         path.to_aml_bytes(&mut bytes);
         bytes.append(&mut children);
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
-        bytes.insert(0, SCOPEOP);
+
+        let n = bytes.len(); // n >= 1
+        let pkg_length = create_pkg_length(n - 1, true);
+        let m = pkg_length.len();
+
+        // move everything after the SCOPEOP over and copy in pkg_length
+        bytes.resize(n + m, 0xFF);
+        bytes.as_mut_slice().copy_within(1..n, m + 1);
+        bytes.as_mut_slice()[1..m + 1].copy_from_slice(pkg_length.as_slice());
+
         bytes
     }
 }
@@ -901,13 +886,10 @@ impl<'a> Aml for Method<'a> {
             child.to_aml_bytes(&mut bytes);
         }
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(METHODOP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -996,14 +978,11 @@ impl Aml for Field {
             }
         }
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(EXTOPPREFIX);
         sink.byte(FIELDOP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -1078,13 +1057,10 @@ impl<'a> Aml for If<'a> {
             child.to_aml_bytes(&mut bytes);
         }
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(IFOP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -1108,13 +1084,10 @@ impl<'a> Aml for Else<'a> {
             child.to_aml_bytes(&mut bytes);
         }
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(ELSEOP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -1310,13 +1283,10 @@ impl<'a> Aml for While<'a> {
             child.to_aml_bytes(&mut bytes);
         }
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(WHILEOP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -1530,13 +1500,10 @@ impl<'a> Aml for BufferTerm<'a> {
         let mut bytes = Vec::new();
         self.data.to_aml_bytes(&mut bytes);
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(BUFFEROP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -1559,13 +1526,10 @@ impl Aml for BufferData {
         self.data.len().to_aml_bytes(&mut bytes);
         bytes.extend_from_slice(&self.data);
 
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(BUFFEROP);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }
@@ -1683,14 +1647,11 @@ impl<'a> Aml for PowerResource<'a> {
         }
 
         // PkgLength
-        let mut pkg_length = create_pkg_length(bytes.len(), true);
-        pkg_length.reverse();
-        for byte in pkg_length {
-            bytes.insert(0, byte);
-        }
+        let pkg_length = create_pkg_length(bytes.len(), true);
 
         sink.byte(POWERRESOURCEOP);
         sink.byte(EXTOPPREFIX);
+        sink.vec(&pkg_length);
         sink.vec(&bytes);
     }
 }

@@ -81,9 +81,7 @@ impl SRAT {
 
 impl Aml for SRAT {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-        for byte in self.header.as_bytes() {
-            sink.byte(*byte);
-        }
+        sink.vec(self.header.as_bytes());
 
         sink.dword(1); // reserved to be 1 for backward compatibility.
         sink.qword(0); // reserved
@@ -206,12 +204,8 @@ impl Aml for Handle {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         match self {
             Handle::Acpi { hid, uid } => {
-                for byte in hid {
-                    sink.byte(*byte);
-                }
-                for byte in uid {
-                    sink.byte(*byte);
-                }
+                sink.vec(hid);
+                sink.vec(uid);
 
                 sink.dword(0); // reserved
             }

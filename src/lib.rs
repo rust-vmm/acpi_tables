@@ -49,21 +49,15 @@ pub trait AmlSink {
     fn byte(&mut self, byte: u8);
 
     fn word(&mut self, word: u16) {
-        for byte in word.to_le_bytes() {
-            self.byte(byte);
-        }
+        self.vec(&word.to_le_bytes());
     }
 
     fn dword(&mut self, dword: u32) {
-        for byte in dword.to_le_bytes() {
-            self.byte(byte);
-        }
+        self.vec(&dword.to_le_bytes());
     }
 
     fn qword(&mut self, qword: u64) {
-        for byte in qword.to_le_bytes() {
-            self.byte(byte);
-        }
+        self.vec(&qword.to_le_bytes());
     }
 
     fn vec(&mut self, v: &[u8]) {
@@ -86,6 +80,10 @@ pub trait Aml {
 impl AmlSink for alloc::vec::Vec<u8> {
     fn byte(&mut self, byte: u8) {
         self.push(byte);
+    }
+
+    fn vec(&mut self, v: &[u8]) {
+        self.extend_from_slice(v);
     }
 }
 
@@ -187,9 +185,7 @@ macro_rules! aml_as_bytes {
     ($x:ty) => {
         impl Aml for $x {
             fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
-                for byte in self.as_bytes() {
-                    sink.byte(*byte);
-                }
+                sink.vec(self.as_bytes());
             }
         }
     };
