@@ -1780,6 +1780,16 @@ mod tests {
     }
 
     #[test]
+    fn test_scope_raw() {
+        let scope = [
+            0x10, 0x0E, 0x2E, 0x5F, 0x53, 0x42, 0x5F, 0x4D, 0x42, 0x52, 0x44, 0xAA, 0xBB, 0xCC,
+            0xDD,
+        ];
+        let bytes = Scope::raw("_SB_.MBRD".into(), vec![0xAA, 0xBB, 0xCC, 0xDD]);
+        assert_eq!(bytes, scope);
+    }
+
+    #[test]
     fn test_resource_template() {
         /*
         Name (_CRS, ResourceTemplate ()  // _CRS: Current Resource Settings
