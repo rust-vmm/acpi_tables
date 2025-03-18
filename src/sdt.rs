@@ -9,7 +9,7 @@ use crate::{Aml, AmlSink};
 use alloc::vec::Vec;
 use zerocopy::AsBytes;
 
-#[repr(packed)]
+#[repr(C, packed)]
 #[derive(Clone, Copy, AsBytes)]
 pub struct GenericAddress {
     pub address_space_id: u8,
