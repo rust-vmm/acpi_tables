@@ -78,7 +78,8 @@ impl GAS {
         function: u8,
         register: u16,
     ) -> Self {
-        let address = ((device as u64) << 32 | (function as u64) << 16 | (register as u64)).into();
+        let address =
+            (((device as u64) << 32) | ((function as u64) << 16) | (register as u64)).into();
         Self {
             address_space_id: AddressSpace::PciConfigSpace,
             register_bit_width,
