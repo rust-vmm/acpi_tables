@@ -262,7 +262,7 @@ pub struct Package<'a> {
     children: Vec<&'a dyn Aml>,
 }
 
-impl<'a> Aml for Package<'a> {
+impl Aml for Package<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = vec![self.children.len() as u8];
         for child in &self.children {
@@ -337,7 +337,7 @@ pub struct VarPackageTerm<'a> {
     data: &'a dyn Aml,
 }
 
-impl<'a> Aml for VarPackageTerm<'a> {
+impl Aml for VarPackageTerm<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
         self.data.to_aml_bytes(&mut bytes);
@@ -487,7 +487,7 @@ pub struct ResourceTemplate<'a> {
     children: Vec<&'a dyn Aml>,
 }
 
-impl<'a> Aml for ResourceTemplate<'a> {
+impl Aml for ResourceTemplate<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
 
@@ -784,7 +784,7 @@ pub struct Device<'a> {
     children: Vec<&'a dyn Aml>,
 }
 
-impl<'a> Aml for Device<'a> {
+impl Aml for Device<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
         self.path.to_aml_bytes(&mut bytes);
@@ -814,7 +814,7 @@ pub struct Scope<'a> {
     children: Vec<&'a dyn Aml>,
 }
 
-impl<'a> Aml for Scope<'a> {
+impl Aml for Scope<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
         self.path.to_aml_bytes(&mut bytes);
@@ -876,7 +876,7 @@ impl<'a> Method<'a> {
     }
 }
 
-impl<'a> Aml for Method<'a> {
+impl Aml for Method<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
         self.path.to_aml_bytes(&mut bytes);
@@ -1022,7 +1022,7 @@ impl<'a> OpRegion<'a> {
     }
 }
 
-impl<'a> Aml for OpRegion<'a> {
+impl Aml for OpRegion<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         sink.byte(EXTOPPREFIX);
         sink.byte(OPREGIONOP);
@@ -1049,7 +1049,7 @@ impl<'a> If<'a> {
     }
 }
 
-impl<'a> Aml for If<'a> {
+impl Aml for If<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
         self.predicate.to_aml_bytes(&mut bytes);
@@ -1077,7 +1077,7 @@ impl<'a> Else<'a> {
     }
 }
 
-impl<'a> Aml for Else<'a> {
+impl Aml for Else<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
         for child in self.body.iter() {
@@ -1165,7 +1165,7 @@ impl<'a> Store<'a> {
     }
 }
 
-impl<'a> Aml for Store<'a> {
+impl Aml for Store<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         sink.byte(STOREOP);
         self.value.to_aml_bytes(sink);
@@ -1250,7 +1250,7 @@ impl<'a> Notify<'a> {
     }
 }
 
-impl<'a> Aml for Notify<'a> {
+impl Aml for Notify<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         sink.byte(NOTIFYOP);
         self.object.to_aml_bytes(sink);
@@ -1275,7 +1275,7 @@ impl<'a> While<'a> {
     }
 }
 
-impl<'a> Aml for While<'a> {
+impl Aml for While<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
         self.predicate.to_aml_bytes(&mut bytes);
@@ -1416,7 +1416,7 @@ impl<'a> CreateField<'a> {
     }
 }
 
-impl<'a> Aml for CreateField<'a> {
+impl Aml for CreateField<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         sink.byte(EXTOPPREFIX);
         sink.byte(CREATEFIELDOP);
@@ -1451,7 +1451,7 @@ impl<'a> Mid<'a> {
     }
 }
 
-impl<'a> Aml for Mid<'a> {
+impl Aml for Mid<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         sink.byte(MIDOP);
         self.source.to_aml_bytes(sink);
@@ -1474,7 +1474,7 @@ impl<'a> MethodCall<'a> {
     }
 }
 
-impl<'a> Aml for MethodCall<'a> {
+impl Aml for MethodCall<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         self.name.to_aml_bytes(sink);
         for arg in self.args.iter() {
@@ -1495,7 +1495,7 @@ impl<'a> BufferTerm<'a> {
     }
 }
 
-impl<'a> Aml for BufferTerm<'a> {
+impl Aml for BufferTerm<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
         self.data.to_aml_bytes(&mut bytes);
@@ -1629,7 +1629,7 @@ impl<'a> PowerResource<'a> {
     }
 }
 
-impl<'a> Aml for PowerResource<'a> {
+impl Aml for PowerResource<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
 
