@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
@@ -30,7 +33,7 @@ enum MadtStructureType {
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 struct Header {
     table_header: TableHeader,
     /// Must be ignored by OSPM for RISC-V
@@ -111,7 +114,7 @@ impl MADT {
 
     pub fn add_structure<T>(&mut self, t: T)
     where
-        T: Aml + AsBytes + Clone + 'static,
+        T: Aml + IntoBytes + Immutable + Clone + 'static,
     {
         self.update_header(t.as_bytes());
         self.structures.push(Box::new(t));
@@ -136,7 +139,7 @@ impl Aml for MADT {
 
 /// Processor-Local APIC
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct ProcessorLocalApic {
     r#type: u8,
     length: u8,
@@ -169,7 +172,7 @@ aml_as_bytes!(ProcessorLocalApic);
 
 /// I/O APIC
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct IoApic {
     r#type: u8,
     length: u8,
@@ -196,7 +199,7 @@ aml_as_bytes!(IoApic);
 
 /// GIC CPU Interface (GICC)
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct Gicc {
     r#type: u8,
     length: u8,
@@ -302,7 +305,7 @@ pub enum GicVersion {
 
 /// GIC Distributor (GICD) Structure
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct Gicd {
     r#type: u8,
     length: u8,
@@ -334,7 +337,7 @@ aml_as_bytes!(Gicd);
 
 /// GIC MSI Frame Structure
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct GicMsi {
     r#type: u8,
     length: u8,
@@ -372,7 +375,7 @@ aml_as_bytes!(GicMsi);
 
 /// GIC Redistributor (GICR) Structure
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct Gicr {
     r#type: u8,
     length: u8,
@@ -398,7 +401,7 @@ aml_as_bytes!(Gicr);
 
 /// GIC Interrupt Translation Service (ITS) Structure
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct GicIts {
     r#type: u8,
     length: u8,
@@ -428,7 +431,7 @@ aml_as_bytes!(GicIts);
 /// RISC-V platforms need to have a simple, per-hart interrupt controller
 /// available to supervisor mode.
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct RINTC {
     r#type: u8,
     length: u8,
@@ -486,7 +489,7 @@ aml_as_bytes!(RINTC);
 // provides information common across processors. The per-processor
 // information will be provided by the RINTC structure.
 #[repr(C, packed)]
-#[derive(Copy, Clone, Debug, Default, AsBytes)]
+#[derive(Copy, Clone, Debug, Default, IntoBytes, Immutable)]
 pub struct IMSIC {
     r#type: u8,
     length: u8,
@@ -547,7 +550,7 @@ aml_as_bytes!(IMSIC);
 // interrupts only in the form of MSIs. In that case, the role of an
 // APLIC is to convert wired interrupts into MSIs for harts.
 #[repr(C, packed)]
-#[derive(Copy, Clone, Debug, AsBytes)]
+#[derive(Copy, Clone, Debug, IntoBytes, Immutable)]
 pub struct APLIC {
     r#type: u8,
     length: u8,
@@ -596,7 +599,7 @@ assert_same_size!(APLIC, [u8; 36]);
 aml_as_bytes!(APLIC);
 
 #[repr(C, packed)]
-#[derive(Copy, Clone, Debug, AsBytes)]
+#[derive(Copy, Clone, Debug, IntoBytes, Immutable)]
 pub struct PLIC {
     r#type: u8,
     length: u8,

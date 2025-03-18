@@ -6,7 +6,10 @@
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 use crate::{aml_as_bytes, u8sum, Aml, AmlSink, Checksum, TableHeader};
 
@@ -295,7 +298,7 @@ impl CacheNodeBuilder {
 }
 
 #[repr(C, packed)]
-#[derive(Copy, Clone, Debug, Default, AsBytes)]
+#[derive(Copy, Clone, Debug, Default, IntoBytes, Immutable)]
 pub struct CacheNode {
     r#type: u8,
     length: u8,

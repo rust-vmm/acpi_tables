@@ -34,7 +34,10 @@ pub mod xsdt;
 
 extern crate alloc;
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 type U32 = byteorder::U32<LE>;
 
@@ -89,7 +92,7 @@ impl AmlSink for alloc::vec::Vec<u8> {
 
 /// Standard header for many ACPI tables
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 struct TableHeader {
     pub signature: [u8; 4],
     pub length: U32,

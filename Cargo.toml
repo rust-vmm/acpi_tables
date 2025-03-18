@@ -10,4 +10,4 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-zerocopy = { version = "0.7.1", features = ["derive"] }
+zerocopy = { version = "0.8.23", features = ["derive"] }

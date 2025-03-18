@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 extern crate alloc;
 use alloc::vec::Vec;
@@ -282,7 +285,7 @@ impl Aml for ResourceID {
     }
 }
 
-#[derive(Clone, Debug, Default, AsBytes)]
+#[derive(Clone, Debug, Default, IntoBytes, Immutable)]
 #[repr(C, packed)]
 pub struct CacheResource {
     // Resource ID 1
@@ -305,7 +308,7 @@ impl CacheResource {
     }
 }
 
-#[derive(Clone, Debug, Default, AsBytes)]
+#[derive(Clone, Debug, Default, IntoBytes, Immutable)]
 #[repr(C, packed)]
 pub struct MemoryAffinityStructureResource {
     // Resource ID 1
@@ -335,7 +338,7 @@ impl MemoryAffinityStructureResource {
     }
 }
 
-#[derive(Clone, Debug, Default, AsBytes)]
+#[derive(Clone, Debug, Default, IntoBytes, Immutable)]
 #[repr(C, packed)]
 pub struct ACPIDeviceResource {
     // Resource ID 1
@@ -356,7 +359,7 @@ impl ACPIDeviceResource {
     }
 }
 
-#[derive(Clone, Debug, Default, AsBytes)]
+#[derive(Clone, Debug, Default, IntoBytes, Immutable)]
 #[repr(C, packed)]
 pub struct PCIDeviceResource {
     // Resource ID 1
