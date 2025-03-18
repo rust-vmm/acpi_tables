@@ -146,7 +146,7 @@ impl PciDevice {
     }
 
     fn as_bdf(&self) -> u16 {
-        (self.bus as u16) << 8 | (self.device as u16) << 3 | self.function as u16
+        ((self.bus as u16) << 8) | ((self.device as u16) << 3) | self.function as u16
     }
 }
 

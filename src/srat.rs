@@ -196,7 +196,7 @@ impl Handle {
     }
 
     fn devfn(device: u8, function: u8) -> u8 {
-        device << 3 | function
+        (device << 3) | function
     }
 }
 

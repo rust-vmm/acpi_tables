@@ -426,12 +426,12 @@ impl EISAName {
 
         let data = name.as_bytes();
 
-        let value: u32 = (u32::from(data[0].checked_sub(NAMECHARBASE).unwrap()) << 26
-            | u32::from(data[1].checked_sub(NAMECHARBASE).unwrap()) << 21
-            | u32::from(data[2].checked_sub(NAMECHARBASE).unwrap()) << 16
-            | name.chars().nth(3).unwrap().to_digit(16).unwrap() << 12
-            | name.chars().nth(4).unwrap().to_digit(16).unwrap() << 8
-            | name.chars().nth(5).unwrap().to_digit(16).unwrap() << 4
+        let value: u32 = ((u32::from(data[0].checked_sub(NAMECHARBASE).unwrap()) << 26)
+            | (u32::from(data[1].checked_sub(NAMECHARBASE).unwrap()) << 21)
+            | (u32::from(data[2].checked_sub(NAMECHARBASE).unwrap()) << 16)
+            | (name.chars().nth(3).unwrap().to_digit(16).unwrap() << 12)
+            | (name.chars().nth(4).unwrap().to_digit(16).unwrap() << 8)
+            | (name.chars().nth(5).unwrap().to_digit(16).unwrap() << 4)
             | name.chars().nth(6).unwrap().to_digit(16).unwrap())
         .swap_bytes();
 
@@ -596,7 +596,7 @@ impl<T: Default> AddressSpace<T> {
             type_: AddressSpaceType::Memory,
             min,
             max,
-            type_flags: (cacheable as u8) << 1 | read_write as u8,
+            type_flags: ((cacheable as u8) << 1) | read_write as u8,
             translation,
         }
     }
@@ -629,7 +629,7 @@ impl<T: Default> AddressSpace<T> {
             sink.byte(byte);
         }
         sink.byte(self.type_ as u8); /* type */
-        let generic_flags = 1 << 2 /* Min Fixed */ | 1 << 3; /* Max Fixed */
+        let generic_flags = (1 << 2) /* Min Fixed */ | (1 << 3); /* Max Fixed */
         sink.byte(generic_flags);
         sink.byte(self.type_flags);
     }
@@ -749,9 +749,9 @@ impl Aml for Interrupt {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         sink.byte(EXTIRQDESC); /* Extended IRQ Descriptor */
         sink.word(6);
-        let flags = (self.shared as u8) << 3
-            | (self.active_low as u8) << 2
-            | (self.edge_triggered as u8) << 1
+        let flags = ((self.shared as u8) << 3)
+            | ((self.active_low as u8) << 2)
+            | ((self.edge_triggered as u8) << 1)
             | self.consumer as u8;
         sink.byte(flags);
         sink.byte(1); /* count */
@@ -880,7 +880,7 @@ impl Aml for Method<'_> {
     fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
         let mut bytes = Vec::new();
         self.path.to_aml_bytes(&mut bytes);
-        let flags: u8 = (self.args & 0x7) | (self.serialized as u8) << 3;
+        let flags: u8 = (self.args & 0x7) | ((self.serialized as u8) << 3);
         bytes.push(flags);
         for child in &self.children {
             child.to_aml_bytes(&mut bytes);
@@ -961,8 +961,9 @@ impl Aml for Field {
         let mut bytes = Vec::new();
         self.path.to_aml_bytes(&mut bytes);
 
-        let flags: u8 =
-            self.access_type as u8 | (self.lock_rule as u8) << 4 | (self.update_rule as u8) << 5;
+        let flags: u8 = self.access_type as u8
+            | ((self.lock_rule as u8) << 4)
+            | ((self.update_rule as u8) << 5);
         bytes.push(flags);
 
         for field in self.fields.iter() {
@@ -1948,12 +1949,12 @@ mod tests {
         assert_eq!(create_pkg_length(62, true), vec![63]);
         assert_eq!(
             create_pkg_length(64, true),
-            vec![1 << 6 | (66 & 0xf), 66 >> 4]
+            vec![(1 << 6) | (66 & 0xf), 66 >> 4]
         );
         assert_eq!(
             create_pkg_length(4096, true),
             vec![
-                2 << 6 | (4099 & 0xf) as u8,
+                (2 << 6) | (4099 & 0xf) as u8,
                 (4099 >> 4) as u8,
                 (4099 >> 12) as u8
             ]

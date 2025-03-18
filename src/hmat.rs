@@ -316,10 +316,10 @@ impl MemorySideCache {
         cacheline_size: u16,
     ) -> Self {
         let attributes = total_cache_levels as u32
-            | (this_cache_level as u32) << 4
-            | (associativity as u32) << 8
-            | (write_policy as u32) << 12
-            | (cacheline_size as u32) << 16;
+            | ((this_cache_level as u32) << 4)
+            | ((associativity as u32) << 8)
+            | ((write_policy as u32) << 12)
+            | ((cacheline_size as u32) << 16);
         Self {
             proximity_domain,
             cache_size,
