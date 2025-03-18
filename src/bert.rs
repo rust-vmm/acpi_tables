@@ -16,7 +16,6 @@ type U64 = byteorder::U64<LE>;
 /// firmware-reserved memory that is used to store details of any
 /// unhandled errors that occurred in the previous boot. The format of
 /// the Boot Error Region follows that of an `Error Status Block`.
-
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, Default, AsBytes)]
 pub struct BERT {
