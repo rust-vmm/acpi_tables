@@ -445,7 +445,7 @@ impl Platform {
     }
 
     fn id_mapping_offset(&self) -> usize {
-        Self::NAME_OFFSET + self.name.as_bytes().len() + 1
+        Self::NAME_OFFSET + self.name.len() + 1
     }
 
     fn len(&self) -> usize {
