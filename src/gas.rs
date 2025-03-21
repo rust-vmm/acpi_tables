@@ -4,12 +4,12 @@
 //
 
 use crate::{Aml, AmlSink};
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{byteorder, byteorder::LE, Immutable, IntoBytes};
 
 type U64 = byteorder::U64<LE>;
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, AsBytes, Default)]
+#[derive(Clone, Copy, Debug, IntoBytes, Default, Immutable)]
 pub enum AddressSpace {
     #[default]
     SystemMemory = 0x0,
@@ -28,7 +28,7 @@ pub enum AddressSpace {
 }
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, AsBytes, Default)]
+#[derive(Clone, Copy, Debug, IntoBytes, Default, Immutable)]
 pub enum AccessSize {
     #[default]
     Undefined = 0,
@@ -39,7 +39,7 @@ pub enum AccessSize {
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, AsBytes, Default)]
+#[derive(Clone, Copy, Debug, IntoBytes, Default, Immutable)]
 pub struct GAS {
     pub address_space_id: AddressSpace,
     pub register_bit_width: u8,

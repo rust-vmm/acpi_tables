@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 extern crate alloc;
 
@@ -70,7 +73,7 @@ impl Aml for TpmClient1_2 {
     }
 }
 
-#[derive(Copy, Clone, Default, AsBytes)]
+#[derive(Copy, Clone, Default, IntoBytes, Immutable)]
 #[repr(C, packed)]
 pub struct TpmServer1_2 {
     header: TableHeader,

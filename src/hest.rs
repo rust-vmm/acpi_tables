@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
@@ -74,7 +77,7 @@ impl HEST {
 
     pub fn add_structure<T>(&mut self, t: T)
     where
-        T: Aml + AsBytes + Clone + 'static,
+        T: Aml + IntoBytes + Immutable + Clone + 'static,
     {
         self.update_header(t.as_bytes());
         self.structures.push(Box::new(t));
@@ -97,7 +100,7 @@ impl Aml for HEST {
 /// This structure contains information for configuring AER support on
 /// a given root port.
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct PcieAerRootPort {
     r#type: U16,
     source_id: U16,
@@ -189,7 +192,7 @@ aml_as_bytes!(PcieAerRootPort);
 /// otherwise there should be one entry for each device that supports
 /// AER.
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct PcieAerDevice {
     r#type: U16,
     source_id: U16,
@@ -250,7 +253,7 @@ aml_as_bytes!(PcieAerDevice);
 /// PCIe/PCI-X bridges that support AER implement fields that control
 /// the behavior of how errors are reported across the bridge.
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct PcieAerBridge {
     r#type: U16,
     source_id: U16,
@@ -321,7 +324,7 @@ aml_as_bytes!(PcieAerBridge);
 /// for configure and control operations, therefore the error source
 /// must be configured by firmware during boot.
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct GenericHardwareSource {
     r#type: U16,
     source_id: U16,
@@ -366,7 +369,7 @@ impl GenericHardwareSource {
 aml_as_bytes!(GenericHardwareSource);
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct NotificationStructure {
     r#type: NotificationType,
     length: u8,
@@ -400,7 +403,7 @@ impl NotificationStructure {
 aml_as_bytes!(NotificationStructure);
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub enum NotificationType {
     #[default]
     Polled = 0,
@@ -422,7 +425,7 @@ pub enum NotificationType {
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone, Debug, AsBytes, Default)]
+#[derive(Copy, Clone, Debug, IntoBytes, Immutable, Default)]
 pub enum ErrorSeverity {
     Recoverable = 0,
     Fatal = 1,
@@ -543,7 +546,7 @@ impl Aml for GenericErrorData {
 /// for HW-reduced platforms that rely on "RAS controllers" to generate generic
 /// error records.
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct GenericHardwareSourceV2 {
     r#type: U16,
     source_id: U16,
