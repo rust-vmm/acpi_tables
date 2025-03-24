@@ -7,10 +7,10 @@ extern crate alloc;
 
 use crate::{Aml, AmlSink};
 use alloc::vec::Vec;
-use zerocopy::AsBytes;
+use zerocopy::{FromBytes, Immutable, IntoBytes};
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, AsBytes)]
+#[derive(Clone, Copy, IntoBytes, Immutable, FromBytes)]
 pub struct GenericAddress {
     pub address_space_id: u8,
     pub register_bit_width: u8,
@@ -101,7 +101,7 @@ impl Sdt {
         self.data.as_slice()
     }
 
-    pub fn append<T: AsBytes>(&mut self, value: T) {
+    pub fn append<T: IntoBytes + Immutable + FromBytes>(&mut self, value: T) {
         let orig_length = self.data.len();
         let new_length = orig_length + core::mem::size_of::<T>();
         self.data.resize(new_length, 0);
@@ -125,7 +125,7 @@ impl Sdt {
     }
 
     /// Write a value at the given offset
-    pub fn write<T: AsBytes>(&mut self, offset: usize, value: T) {
+    pub fn write<T: IntoBytes + Immutable + FromBytes>(&mut self, offset: usize, value: T) {
         self.write_bytes(offset, value.as_bytes())
     }
 

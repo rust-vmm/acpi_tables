@@ -7,7 +7,7 @@ extern crate alloc;
 
 use crate::{Aml, AmlSink, Checksum, TableHeader};
 use alloc::vec::Vec;
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 
 pub struct XSDT {
     header: TableHeader,

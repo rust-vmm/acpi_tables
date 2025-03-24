@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 extern crate alloc;
 use alloc::{boxed::Box, vec, vec::Vec};
@@ -101,7 +104,7 @@ impl Aml for HMAT {
 // by the memory subsystem and its associativity with a processor
 // proximity domain.
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct MemoryProximityDomain {
     r#type: U16,
     _reserved0: U16,

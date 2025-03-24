@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 type U32 = byteorder::U32<LE>;
 type U64 = byteorder::U64<LE>;
@@ -12,7 +15,7 @@ type U64 = byteorder::U64<LE>;
 use crate::{aml_as_bytes, Aml, AmlSink};
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Default, AsBytes)]
+#[derive(Clone, Copy, Default, IntoBytes, Immutable)]
 pub struct Rsdp {
     pub signature: [u8; 8],
     pub checksum: u8,

@@ -4,7 +4,7 @@
 //
 
 use crate::{gas::GAS, Aml, AmlSink};
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{byteorder, byteorder::LE, Immutable, IntoBytes};
 
 type U16 = byteorder::U16<LE>;
 type U32 = byteorder::U32<LE>;
@@ -64,7 +64,7 @@ pub enum PmProfile {
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Default, AsBytes)]
+#[derive(Clone, Copy, Default, IntoBytes, Immutable)]
 pub struct FADTBuilder {
     pub signature: [u8; 4],
     pub length: U32,

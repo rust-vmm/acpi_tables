@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 
 extern crate alloc;
 use alloc::vec::Vec;
