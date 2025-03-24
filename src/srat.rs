@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
@@ -284,7 +287,7 @@ impl Aml for GenericInitiator {
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct RintcAffinity {
     r#type: u8,
     length: u8,

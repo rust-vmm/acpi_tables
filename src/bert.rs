@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 extern crate alloc;
 
@@ -17,7 +20,7 @@ type U64 = byteorder::U64<LE>;
 /// unhandled errors that occurred in the previous boot. The format of
 /// the Boot Error Region follows that of an `Error Status Block`.
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 pub struct BERT {
     header: TableHeader,
     error_region_length: U32,

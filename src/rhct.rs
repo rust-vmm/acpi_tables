@@ -7,13 +7,16 @@ extern crate alloc;
 
 use crate::{u8sum, Aml, AmlSink, Checksum, TableHeader};
 use alloc::{boxed::Box, vec, vec::Vec};
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 type U32 = byteorder::U32<LE>;
 type U64 = byteorder::U64<LE>;
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Default, AsBytes)]
+#[derive(Clone, Copy, Default, IntoBytes, Immutable)]
 struct Header {
     table_header: TableHeader,
     _reserved: u32,

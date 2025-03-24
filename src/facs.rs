@@ -4,13 +4,16 @@
 //
 
 use crate::{Aml, AmlSink};
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 type U32 = byteorder::U32<LE>;
 type U64 = byteorder::U64<LE>;
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Default, AsBytes)]
+#[derive(Clone, Copy, Default, IntoBytes, Immutable)]
 pub struct FACS {
     pub signature: [u8; 4],
     pub length: U32,

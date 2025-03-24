@@ -7,7 +7,10 @@ extern crate alloc;
 
 use crate::{Aml, AmlSink, Checksum, TableHeader};
 use alloc::vec::Vec;
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 type U16 = byteorder::U16<LE>;
 type U64 = byteorder::U64<LE>;
@@ -85,7 +88,7 @@ impl Aml for MCFG {
 }
 
 #[repr(C, packed)]
-#[derive(Copy, Clone, Debug, Default, AsBytes)]
+#[derive(Copy, Clone, Debug, Default, IntoBytes, Immutable)]
 struct EcamEntry {
     base_addr: U64,
     segment: U16,

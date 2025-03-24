@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use zerocopy::{byteorder, byteorder::LE, AsBytes};
+use zerocopy::{
+    byteorder::{self, LE},
+    Immutable, IntoBytes,
+};
 
 use crate::{assert_same_size, gas, Aml, AmlSink, Checksum, TableHeader};
 use core::mem::size_of;
@@ -96,7 +99,7 @@ enum SerialPortSubType {
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default, AsBytes)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable)]
 struct SerialPortInfo {
     interface_type: u8,
     reserved0: [u8; 3],
