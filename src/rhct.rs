@@ -174,7 +174,7 @@ impl IsaStringNode {
         // type (2), length (2), revision (2), string length (2),
         // string (N), null terminator (1), padding (0 or 1)
         let len = 8 + self.string.len() + 1;
-        if len % 2 == 0 {
+        if len.is_multiple_of(2) {
             len
         } else {
             len + 1
