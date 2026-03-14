@@ -57,7 +57,7 @@ impl PPTT {
         let header = TableHeader {
             signature: *b"PPTT",
             length: (TableHeader::len() as u32).into(),
-            revision: 1,
+            revision: 3,
             checksum: 0,
             oem_id,
             oem_table_id,
