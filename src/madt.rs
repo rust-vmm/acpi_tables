@@ -17,6 +17,11 @@ type U16 = byteorder::U16<LE>;
 type U32 = byteorder::U32<LE>;
 type U64 = byteorder::U64<LE>;
 
+#[repr(u32)]
+enum MadtFlags {
+    PcAtCompat = 1 << 0,
+}
+
 #[repr(u8)]
 enum MadtStructureType {
     ProcessorLocalApic = 0x0,
@@ -96,6 +101,20 @@ impl MADT {
             structures: Vec::new(),
             has_imsic: false,
         }
+    }
+
+    pub fn pc_at_compat(mut self) -> Self {
+        self.set_flag(MadtFlags::PcAtCompat);
+        self
+    }
+
+    fn set_flag(&mut self, flag: MadtFlags) {
+        let old_flags = self.header.flags.get();
+        self.header.flags |= flag as u32;
+
+        self.checksum.delete(old_flags.as_bytes());
+        self.checksum.append(self.header.flags.as_bytes());
+        self.header.table_header.checksum = self.checksum.value();
     }
 
     fn update_header(&mut self, data: &[u8]) {
@@ -671,7 +690,8 @@ mod tests {
             *b"DECAFCOF",
             0xdead_beef,
             LocalInterruptController::Riscv,
-        );
+        )
+        .pc_at_compat();
         check_checksum(&madt);
         assert_eq!(Header::len(), get_size(&madt));
     }
