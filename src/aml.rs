@@ -24,6 +24,8 @@ const BUFFEROP: u8 = 0x11;
 const PACKAGEOP: u8 = 0x12;
 const VARPACKAGEOP: u8 = 0x13;
 const METHODOP: u8 = 0x14;
+const IRQNOFLAGSDESC: u8 = 0x22;
+const IRQDESC: u8 = 0x23;
 const DUALNAMEPREFIX: u8 = 0x2e;
 const MULTINAMEPREFIX: u8 = 0x2f;
 const NAMECHARBASE: u8 = 0x40;
@@ -756,6 +758,67 @@ impl Aml for Interrupt {
         sink.byte(flags);
         sink.byte(1); /* count */
         sink.dword(self.number);
+    }
+}
+
+/// IRQ resource object.
+pub struct Irq {
+    edge_triggered: bool,
+    active_low: bool,
+    shared: bool,
+    number: u8,
+}
+
+impl Irq {
+    /// Create IRQ object
+    pub fn new(edge_triggered: bool, active_low: bool, shared: bool, number: u8) -> Self {
+        Self {
+            edge_triggered,
+            active_low,
+            shared,
+            number,
+        }
+    }
+}
+
+impl Aml for Irq {
+    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
+        sink.byte(IRQDESC); /* IRQ Descriptor */
+        write_irq_mask_bytes(self.number, sink);
+        let flags = ((self.shared as u8) << 4)
+            | ((self.active_low as u8) << 3)
+            | (self.edge_triggered as u8);
+        sink.byte(flags);
+    }
+}
+
+/// IRQNoFlags resource object.
+pub struct IrqNoFlags {
+    number: u8,
+}
+
+impl IrqNoFlags {
+    /// Create IRQNoFlags object
+    pub fn new(number: u8) -> Self {
+        Self { number }
+    }
+}
+
+impl Aml for IrqNoFlags {
+    fn to_aml_bytes(&self, sink: &mut dyn AmlSink) {
+        sink.byte(IRQNOFLAGSDESC); /* IRQNoFlags Descriptor */
+        write_irq_mask_bytes(self.number, sink);
+    }
+}
+
+fn write_irq_mask_bytes(number: u8, sink: &mut dyn AmlSink) {
+    assert!(number <= 15);
+    if number < 8 {
+        sink.byte(1 << number);
+        sink.byte(0);
+    } else {
+        sink.byte(0);
+        sink.byte(1 << (number - 8));
     }
 }
 
@@ -1918,6 +1981,10 @@ mod tests {
                 {
                     0x00000004,
                 }
+                IRQ (Edge, ActiveHigh, Exclusive, )
+                    {7}
+                IRQNoFlags ()
+                    {8}
                 IO (Decode16,
                     0x03F8,             // Range Minimum
                     0x03F8,             // Range Maximum
@@ -1928,14 +1995,17 @@ mod tests {
 
         */
         let interrupt_io_data = [
-            0x08, 0x5F, 0x43, 0x52, 0x53, 0x11, 0x16, 0x0A, 0x13, 0x89, 0x06, 0x00, 0x03, 0x01,
-            0x04, 0x00, 0x00, 0x00, 0x47, 0x01, 0xF8, 0x03, 0xF8, 0x03, 0x00, 0x08, 0x79, 0x00,
+            0x08, 0x5F, 0x43, 0x52, 0x53, 0x11, 0x1D, 0x0A, 0x1A, 0x89, 0x06, 0x00, 0x03, 0x01,
+            0x04, 0x00, 0x00, 0x00, 0x23, 0x80, 0x00, 0x01, 0x22, 0x00, 0x01, 0x47, 0x01, 0xF8,
+            0x03, 0xF8, 0x03, 0x00, 0x08, 0x79, 0x00,
         ];
         aml.clear();
         Name::new(
             "_CRS".into(),
             &ResourceTemplate::new(vec![
                 &Interrupt::new(true, true, false, false, 4),
+                &Irq::new(true, false, false, 7),
+                &IrqNoFlags::new(8),
                 &IO::new(0x3f8, 0x3f8, 0, 0x8),
             ]),
         )
