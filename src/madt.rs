@@ -21,6 +21,8 @@ type U64 = byteorder::U64<LE>;
 enum MadtStructureType {
     ProcessorLocalApic = 0x0,
     IoApic = 0x1,
+    InterruptSourceOverride = 0x2,
+    ProcessorLocalApicNmi = 0x4,
     GicCpuInterface = 0xb,
     GicDistributor = 0xc,
     GicMsiFrame = 0xd,
@@ -45,6 +47,58 @@ impl Header {
     fn len() -> usize {
         core::mem::size_of::<Self>()
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u16)]
+enum MpsIntiPolarityFlags {
+    ActiveHigh = 0b01,
+    ActiveLow = 0b11,
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u16)]
+enum MpsIntiTriggerModeFlags {
+    EdgeTriggered = 0b01,
+    LevelTriggered = 0b11,
+}
+
+macro_rules! mps_inti_flags {
+    () => {
+        pub fn active_high(mut self) -> Self {
+            self.set_polarity_flag(MpsIntiPolarityFlags::ActiveHigh);
+            self
+        }
+
+        pub fn active_low(mut self) -> Self {
+            self.set_polarity_flag(MpsIntiPolarityFlags::ActiveLow);
+            self
+        }
+
+        pub fn edge_triggered(mut self) -> Self {
+            self.set_trigger_mode_flag(MpsIntiTriggerModeFlags::EdgeTriggered);
+            self
+        }
+
+        pub fn level_triggered(mut self) -> Self {
+            self.set_trigger_mode_flag(MpsIntiTriggerModeFlags::LevelTriggered);
+            self
+        }
+
+        fn set_polarity_flag(&mut self, flag: MpsIntiPolarityFlags) {
+            let flags = self.flags.get();
+
+            // Clear existing polarity flag and set new one.
+            self.flags.set((flags & !0b0011_u16) | flag as u16);
+        }
+
+        fn set_trigger_mode_flag(&mut self, flag: MpsIntiTriggerModeFlags) {
+            let flags = self.flags.get();
+
+            // Clear existing trigger mode flag and set new one.
+            self.flags.set((flags & !0b1100_u16) | (flag as u16) << 2);
+        }
+    };
 }
 
 pub struct MADT {
@@ -196,6 +250,72 @@ impl IoApic {
 }
 
 aml_as_bytes!(IoApic);
+
+/// Interrupt Source Override
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, IntoBytes, Immutable)]
+pub struct InterruptSourceOverride {
+    r#type: u8,
+    length: u8,
+    bus: u8,
+    source: u8,
+    gsi: U32,
+    flags: U16,
+}
+
+impl InterruptSourceOverride {
+    pub fn new(source: u8, gsi: u32) -> Self {
+        Self {
+            r#type: MadtStructureType::InterruptSourceOverride as u8,
+            length: Self::len() as u8,
+            bus: 0, // Always zero as per ACPI spec. table 5.25.
+            source,
+            gsi: gsi.into(),
+            flags: 0.into(),
+        }
+    }
+
+    pub fn len() -> usize {
+        core::mem::size_of::<Self>()
+    }
+
+    mps_inti_flags!();
+}
+
+assert_same_size!(InterruptSourceOverride, [u8; 10]);
+aml_as_bytes!(InterruptSourceOverride);
+
+/// Processor-Local APIC NMI
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, IntoBytes, Immutable)]
+pub struct ProcessorLocalApicNmi {
+    r#type: u8,
+    length: u8,
+    acpi_processor_uid: u8,
+    flags: U16,
+    local_apic_lint_num: u8,
+}
+
+impl ProcessorLocalApicNmi {
+    pub fn new(acpi_processor_uid: u8, local_apic_lint_num: u8) -> Self {
+        Self {
+            r#type: MadtStructureType::ProcessorLocalApicNmi as u8,
+            length: Self::len() as u8,
+            acpi_processor_uid,
+            flags: 0.into(),
+            local_apic_lint_num,
+        }
+    }
+
+    pub fn len() -> usize {
+        core::mem::size_of::<Self>()
+    }
+
+    mps_inti_flags!();
+}
+
+assert_same_size!(ProcessorLocalApicNmi, [u8; 6]);
+aml_as_bytes!(ProcessorLocalApicNmi);
 
 /// GIC CPU Interface (GICC)
 #[repr(C, packed)]
@@ -711,6 +831,40 @@ mod tests {
             madt.add_structure(IoApic::new(i, i as u32 * 0x1000, i as u32 * 0x2000));
             check_checksum(&madt);
         }
+    }
+
+    #[test]
+    fn test_int_src_override() {
+        let mut madt = default_madt();
+
+        let iso = InterruptSourceOverride::new(1, 2)
+            .active_high()
+            .edge_triggered();
+        madt.add_structure(iso);
+        check_checksum(&madt);
+
+        assert_eq!(
+            iso.flags.get(),
+            (MpsIntiTriggerModeFlags::EdgeTriggered as u16) << 2
+                | MpsIntiPolarityFlags::ActiveHigh as u16
+        );
+    }
+
+    #[test]
+    fn test_lapic_nmi() {
+        let mut madt = default_madt();
+
+        let nmi = ProcessorLocalApicNmi::new(1, 2)
+            .active_low()
+            .level_triggered();
+        madt.add_structure(nmi);
+        check_checksum(&madt);
+
+        assert_eq!(
+            nmi.flags.get(),
+            (MpsIntiTriggerModeFlags::LevelTriggered as u16) << 2
+                | MpsIntiPolarityFlags::ActiveLow as u16
+        );
     }
 
     #[test]
