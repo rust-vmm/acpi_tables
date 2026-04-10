@@ -63,6 +63,8 @@ const INDEXOP: u8 = 0x88;
 const CREATEDWFIELDOP: u8 = 0x8a;
 const OBJECTTYPEOP: u8 = 0x8e;
 const CREATEQWFIELDOP: u8 = 0x8f;
+const LANDOP: u8 = 0x90;
+const LOROP: u8 = 0x91;
 const LNOTOP: u8 = 0x92;
 const LEQUALOP: u8 = 0x93;
 const LGREATEROP: u8 = 0x94;
@@ -1184,9 +1186,13 @@ macro_rules! compare_op {
     };
 }
 
+compare_op!(LogicalAnd, LANDOP, false);
+compare_op!(LogicalOr, LOROP, false);
 compare_op!(Equal, LEQUALOP, false);
 compare_op!(LessThan, LLESSOP, false);
 compare_op!(GreaterThan, LGREATEROP, false);
+compare_op!(LogicalNand, LANDOP, true);
+compare_op!(LogicalNor, LOROP, true);
 compare_op!(NotEqual, LEQUALOP, true);
 compare_op!(GreaterEqual, LLESSOP, true);
 compare_op!(LessEqual, LGREATEROP, true);
@@ -1382,6 +1388,7 @@ object_op!(ObjectType, OBJECTTYPEOP);
 object_op!(SizeOf, SIZEOFOP);
 object_op!(Return, RETURNOP);
 object_op!(DeRefOf, DEREFOFOP);
+object_op!(LogicalNot, LNOTOP);
 
 macro_rules! binary_op {
     ($name:ident, $opcode:expr) => {
@@ -2368,6 +2375,37 @@ mod tests {
     }
 
     #[test]
+    fn test_compare_op() {
+        let expected = [
+            0x90, 0x00, 0x01, // 0 && 1
+            0x91, 0x00, 0x01, // 0 || 1
+            0x93, 0x00, 0x01, // 0 == 1
+            0x94, 0x00, 0x01, // 0 > 1
+            0x95, 0x00, 0x01, // 0 < 1
+            0x92, 0x90, 0x00, 0x01, // !(0 && 1)
+            0x92, 0x91, 0x00, 0x01, // !(0 || 1)
+            0x92, 0x93, 0x00, 0x01, // 0 != 1
+            0x92, 0x95, 0x00, 0x01, // 0 >= 1
+            0x92, 0x94, 0x00, 0x01, // 0 <= 1
+        ];
+
+        let mut aml = Vec::new();
+
+        LogicalAnd::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+        LogicalOr::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+        Equal::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+        GreaterThan::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+        LessThan::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+        LogicalNand::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+        LogicalNor::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+        NotEqual::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+        GreaterEqual::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+        LessEqual::new(&ZERO, &ONE).to_aml_bytes(&mut aml);
+
+        assert_eq!(aml, &expected[..]);
+    }
+
+    #[test]
     fn test_mutex() {
         /*
         Device (_SB_.MHPC)
@@ -2492,6 +2530,27 @@ mod tests {
         )
         .to_aml_bytes(&mut aml);
         assert_eq!(aml, &while_data[..])
+    }
+
+    #[test]
+    fn test_object_op() {
+        let expected = [
+            0x8e, 0x00, // ObjectType
+            0x87, 0x00, // SizeOf
+            0xa4, 0x00, // Return
+            0x83, 0x00, // DeRefOf
+            0x92, 0x00, // LogicalNot
+        ];
+
+        let mut aml = Vec::new();
+
+        ObjectType::new(&ZERO).to_aml_bytes(&mut aml);
+        SizeOf::new(&ZERO).to_aml_bytes(&mut aml);
+        Return::new(&ZERO).to_aml_bytes(&mut aml);
+        DeRefOf::new(&ZERO).to_aml_bytes(&mut aml);
+        LogicalNot::new(&ZERO).to_aml_bytes(&mut aml);
+
+        assert_eq!(aml, &expected[..]);
     }
 
     #[test]
